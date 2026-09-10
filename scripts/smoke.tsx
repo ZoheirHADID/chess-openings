@@ -190,7 +190,7 @@ const critiques: [string[], string, (w: string[]) => boolean][] = [
   [['e4', 'e5', 'Qh5'], 'sortie precoce de la dame', (w) => w.some((x) => x.includes('Sortie précoce'))],
   [['Na3'], 'cavalier au bord', (w) => w.some((x) => x.includes('Cavalier au bord'))],
   [['e4', 'e5', 'Ke2'], 'droit de roque perdu', (w) => w.some((x) => x.includes('droit de roquer'))],
-  [['d4', 'd5', 'Bf4', 'Bf5', 'Qd3'], 'piece non defendue', (w) => w.some((x) => x.includes('défendu par rien'))],
+  [['d4', 'e6', 'Bh6'], 'fou non defendu', (w) => w.some((x) => x.includes('par rien'))],
 ]
 for (const [moves, label, check] of critiques) {
   const exp = explainMove(moves, positionFromSans(moves).lastMoveDetail)

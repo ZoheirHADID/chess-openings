@@ -30,6 +30,13 @@ les résultats réels, et analyse **Stockfish** dès que la partie sort de la th
   Au **survol** (ou d'une touche sur mobile), une bulle donne l'idée du coup sans quitter l'échiquier.
 - Commentaire théorique rédigé pour les lignes principales (une centaine de coups des
   grandes ouvertures) et **plan directeur** de la famille (sicilienne, française, nimzo-indienne…).
+- **Le coup est aussi critiqué**, pas seulement décrit. Deux niveaux :
+  - *Ce que le coup concède* : pièce attaquée et non défendue, capture avantageuse laissée à
+    l'adversaire, sortie précoce de la dame, pion avancé devant le roi roqué, cavalier au bord, droit de
+    roque perdu, même pièce déplacée trois fois pendant le développement.
+  - *Verdict du moteur* (si Stockfish est activé) : **Meilleur coup / Bon coup / Imprécision / Erreur /
+    Gaffe**, avec la perte en pions et le coup que le moteur aurait joué. L'évaluation de la position
+    précédente est calculée en tâche de fond pour permettre cette comparaison.
 - Hors de ces lignes, une **analyse automatique de la position** repère les motifs classiques : occupation
   et contrôle du centre, développement, roque, fianchetto, prophylaxie (…a6 contre Bb5), clouages et
   enfilades, pièces attaquées, gain d'espace.
@@ -41,6 +48,7 @@ les résultats réels, et analyse **Stockfish** dès que la partie sort de la th
 - **Barre d'évaluation** verticale collée à l'échiquier : avantage blanc / noir en temps réel, mat annoncé.
 - **Stockfish 18** (WASM, GPL-3.0) tourne dans un Web Worker, **en local dans le navigateur** : aucune
   donnée n'est envoyée ailleurs. Variante *lite single-thread* (~7 Mo) : aucun en-tête COOP/COEP requis.
+- **Flèche verte** tracée sur l'échiquier vers le meilleur coup, et bouton dédié dans les commandes.
 - Trois meilleures variantes affichées avec leur évaluation, cliquables pour être jouées.
 - Dès que la ligne sort du répertoire, le moteur met en avant le meilleur coup de la position.
 - Le moteur est désactivé par défaut et se charge à la demande (le choix est mémorisé).
@@ -71,7 +79,10 @@ Un sélecteur en en-tête choisit ce que la couleur traduit :
   sur la page. Les parties depuis position personnalisée et les variantes non standard sont écartées.
 - Chaque partie est rejouée et placée sur la branche théorique la plus profonde qu'elle atteint ;
   l'ouverture est identifiée automatiquement (code ECO + nom).
-- Pastille violette sur les nœuds traversés par vos parties, bilan gains / nulles / défaites par branche.
+- Sur chaque branche, une **pastille indique combien de parties vous y avez jouées et avec quelle
+  couleur** : compte des blancs à gauche sur fond clair, des noirs à droite sur fond sombre. Un clic
+  ouvre la liste des parties qui passent par cette branche, avec leur **identifiant**, la couleur jouée,
+  l'adversaire et le résultat — pour choisir laquelle suivre, en théorie comme hors théorie.
 - **Vos coups réellement joués apparaissent dans l'arbre**, même hors théorie : les continuations de
   toutes les parties importées sont greffées en pointillés ambre sur le nœud où le répertoire s'arrête,
   fusionnées entre elles (une branche commune, puis les divergences), jusqu'à 14 demi-coups. Elles sont

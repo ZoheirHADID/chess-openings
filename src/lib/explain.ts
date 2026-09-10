@@ -32,6 +32,15 @@ const PIECE_NAMES: Record<string, string> = {
   k: 'roi',
 }
 
+/** La tour et la dame sont feminines : articles et accords suivent. */
+const FEMININE = new Set(['r', 'q'])
+const article = (type: string, capital = false) => {
+  const word = FEMININE.has(type) ? 'la' : 'le'
+  return capital ? word[0].toUpperCase() + word.slice(1) : word
+}
+/** Terminaison d'accord du participe passe. */
+const agree = (type: string) => (FEMININE.has(type) ? 'e' : '')
+
 const VALUES: Record<string, number> = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 100 }
 const CENTER = ['d4', 'e4', 'd5', 'e5']
 const START_MINORS: Record<'w' | 'b', string[]> = {
@@ -84,10 +93,10 @@ function detectPin(chess: Chess, move: DetailedMove): string | null {
           blocker = { square, type: piece.type }
         } else {
           if (piece.type === 'k') {
-            return `Cloue le ${PIECE_NAMES[blocker.type]} en ${blocker.square} sur le roi : il ne peut plus bouger.`
+            return `Cloue ${article(blocker.type)} ${PIECE_NAMES[blocker.type]} en ${blocker.square} sur le roi : la pièce ne peut plus bouger.`
           }
           if (piece.type === 'q' && VALUES[blocker.type] < VALUES.q) {
-            return `Enfile le ${PIECE_NAMES[blocker.type]} en ${blocker.square} devant la dame adverse.`
+            return `Enfile ${article(blocker.type)} ${PIECE_NAMES[blocker.type]} en ${blocker.square} devant la dame adverse.`
           }
           break
         }
@@ -107,7 +116,7 @@ function newThreats(chess: Chess, move: DetailedMove): string[] {
     const target = chess.get(square.to as never)
     if (!target || target.color !== enemy) continue
     if (VALUES[target.type] >= VALUES[move.piece] && target.type !== 'k') {
-      threats.push(`${PIECE_NAMES[target.type]} en ${square.to}`)
+      threats.push(`${article(target.type)} ${PIECE_NAMES[target.type]} en ${square.to}`)
     }
   }
   return threats
@@ -135,8 +144,8 @@ function analyse(move: DetailedMove): string[] {
     const gain = VALUES[move.captured] - VALUES[move.piece]
     points.push(
       gain > 0
-        ? `Capture le ${PIECE_NAMES[move.captured]} en ${move.to}, plus précieux que le ${PIECE_NAMES[move.piece]} qui le prend.`
-        : `Capture le ${PIECE_NAMES[move.captured]} en ${move.to}.`,
+        ? `Capture ${article(move.captured)} ${PIECE_NAMES[move.captured]} en ${move.to}, de plus grande valeur que ${article(move.piece)} ${PIECE_NAMES[move.piece]} qui prend.`
+        : `Capture ${article(move.captured)} ${PIECE_NAMES[move.captured]} en ${move.to}.`,
     )
   }
 
@@ -156,7 +165,7 @@ function analyse(move: DetailedMove): string[] {
 
   // Developpement
   if ((move.piece === 'n' || move.piece === 'b') && START_MINORS[color].includes(move.from)) {
-    points.push(`Développe le ${PIECE_NAMES[move.piece]} et rapproche du roque.`)
+    points.push(`Développe ${article(move.piece)} ${PIECE_NAMES[move.piece]} et rapproche du roque.`)
   }
 
   // Fianchetto
@@ -223,9 +232,13 @@ function findWeaknesses(move: DetailedMove, sans: string[]): string[] {
   if (attackers.length > 0 && move.piece !== 'k') {
     const cheapest = Math.min(...attackers.map((sq) => VALUES[after.get(sq as never)?.type ?? 'p']))
     if (defenders.length === 0) {
-      warnings.push(`Le ${PIECE_NAMES[move.piece]} en ${move.to} est attaqué et n’est défendu par rien.`)
+      warnings.push(
+        `${article(move.piece, true)} ${PIECE_NAMES[move.piece]} en ${move.to} est attaqué${agree(move.piece)} et n’est défendu${agree(move.piece)} par rien.`,
+      )
     } else if (cheapest < VALUES[move.piece]) {
-      warnings.push(`Le ${PIECE_NAMES[move.piece]} en ${move.to} est attaqué par une pièce de moindre valeur.`)
+      warnings.push(
+        `${article(move.piece, true)} ${PIECE_NAMES[move.piece]} en ${move.to} est attaqué${agree(move.piece)} par une pièce de moindre valeur.`,
+      )
     }
   }
 
@@ -238,11 +251,11 @@ function findWeaknesses(move: DetailedMove, sans: string[]): string[] {
     const gain = VALUES[reply.captured] - (guarded ? VALUES[reply.piece] : 0)
     if (gain > bestGain) {
       bestGain = gain
-      bestTarget = `${PIECE_NAMES[reply.captured]} en ${reply.to}`
+      bestTarget = `${article(reply.captured)} ${PIECE_NAMES[reply.captured]} en ${reply.to}`
     }
   }
   if (bestGain >= 1 && bestTarget) {
-    warnings.push(`L’adversaire peut gagner du matériel en prenant le ${bestTarget}.`)
+    warnings.push(`L’adversaire peut gagner du matériel en prenant ${bestTarget}.`)
   }
 
   // 3. Sortie precoce de la dame
