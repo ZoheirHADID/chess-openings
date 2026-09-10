@@ -3,8 +3,11 @@ import type { ImportedGame, TreeNode } from './types'
 import { followSans, nearestNamed, pathTo } from './tree'
 
 const KEY = 'chess-openings:games:v1'
-/** On ne conserve que la phase d'ouverture : l'arbre Lichess plafonne a 36 demi-coups. */
-const MAX_PLIES = 40
+/**
+ * Coups conserves par partie. L'arbre theorique plafonne a 36 demi-coups, mais on
+ * garde la suite reellement jouee pour pouvoir rejouer la partie hors theorie.
+ */
+const MAX_PLIES = 160
 
 export function loadGames(): ImportedGame[] {
   try {
@@ -15,13 +18,18 @@ export function loadGames(): ImportedGame[] {
   }
 }
 
-export function saveGames(games: ImportedGame[]) {
+/** Enregistre les parties ; renvoie false si le quota du navigateur est depasse. */
+export function saveGames(games: ImportedGame[]): boolean {
   try {
     localStorage.setItem(KEY, JSON.stringify(games))
+    return true
   } catch {
-    /* stockage indisponible */
+    return false
   }
 }
+
+/** Rapport d'avancement pendant un import qui peut durer plusieurs secondes. */
+export type ImportProgress = (info: { fetched: number; label: string }) => void
 
 function cleanMovetext(movetext: string): string {
   let text = movetext.replace(/\{[^}]*\}/g, ' ').replace(/;[^\n]*/g, ' ')
@@ -53,16 +61,30 @@ function sansFromMovetext(movetext: string): string[] {
   return sans
 }
 
-/** Decoupe un fichier PGN (une ou plusieurs parties) en parties exploitables. */
-export function parsePgn(text: string, username?: string, source: 'pgn' | 'lichess' = 'pgn'): ImportedGame[] {
-  const chunks = text
+/**
+ * Decoupe un fichier PGN (une ou plusieurs parties) en parties exploitables.
+ * `usernames` sert a reconnaitre la couleur jouee ; `keepLast` limite le travail
+ * aux N dernieres parties du fichier (archives mensuelles volumineuses).
+ */
+export function parsePgn(
+  text: string,
+  usernames?: string | string[],
+  source: ImportedGame['source'] = 'pgn',
+  keepLast?: number,
+): ImportedGame[] {
+  const all = text
     .replace(/\r\n/g, '\n')
     .split(/\n\s*(?=\[Event\s)/)
     .map((c) => c.trim())
     .filter(Boolean)
+  const chunks = keepLast ? all.slice(-keepLast) : all
 
   const games: ImportedGame[] = []
-  const me = username?.trim().toLowerCase()
+  const me = new Set(
+    (Array.isArray(usernames) ? usernames : [usernames ?? ''])
+      .map((u) => u.trim().toLowerCase())
+      .filter(Boolean),
+  )
 
   for (const chunk of chunks) {
     const headers: Record<string, string> = {}
@@ -73,6 +95,10 @@ export function parsePgn(text: string, username?: string, source: 'pgn' | 'liche
       headers[match[1]] = match[2]
       headerEnd = match.index + match[0].length
     }
+    // Positions de depart personnalisees et variantes exotiques : hors sujet ici
+    if (headers.FEN || headers.SetUp === '1') continue
+    if (headers.Variant && !/^(standard|chess)$/i.test(headers.Variant)) continue
+
     const movetext = chunk.slice(headerEnd)
     const sans = sansFromMovetext(movetext)
     if (sans.length === 0) continue
@@ -80,19 +106,20 @@ export function parsePgn(text: string, username?: string, source: 'pgn' | 'liche
     const white = headers.White ?? 'Blancs'
     const black = headers.Black ?? 'Noirs'
     let color: 'white' | 'black' | undefined
-    if (me) {
-      if (white.toLowerCase() === me) color = 'white'
-      else if (black.toLowerCase() === me) color = 'black'
-    }
+    if (me.has(white.toLowerCase())) color = 'white'
+    else if (me.has(black.toLowerCase())) color = 'black'
+
+    // Chess.com place le lien dans [Link], Lichess dans [Site]
+    const link = headers.Link ?? (headers.Site?.startsWith('http') ? headers.Site : undefined)
 
     games.push({
-      id: `${headers.Site ?? ''}|${white}|${black}|${headers.Date ?? ''}|${sans.slice(0, 6).join('')}`,
+      id: `${link ?? headers.Site ?? ''}|${white}|${black}|${headers.UTCDate ?? headers.Date ?? ''}|${headers.UTCTime ?? headers.StartTime ?? ''}|${sans.slice(0, 6).join('')}`,
       white,
       black,
       result: headers.Result ?? '*',
       date: headers.UTCDate ?? headers.Date,
       event: headers.Event,
-      url: headers.Site?.startsWith('http') ? headers.Site : undefined,
+      url: link,
       sans,
       color,
       source,
@@ -101,19 +128,77 @@ export function parsePgn(text: string, username?: string, source: 'pgn' | 'liche
   return games
 }
 
-/** Telecharge les dernieres parties d'un joueur via l'API publique Lichess. */
-export async function fetchLichessGames(username: string, max = 60): Promise<ImportedGame[]> {
+/** Telecharge les parties d'un joueur via l'API publique Lichess. */
+export async function fetchLichessGames(
+  username: string,
+  max = 500,
+  onProgress?: ImportProgress,
+): Promise<ImportedGame[]> {
   const user = username.trim()
   if (!user) throw new Error('Pseudo Lichess manquant')
+  onProgress?.({ fetched: 0, label: 'Téléchargement depuis Lichess…' })
   const url = `https://lichess.org/api/games/user/${encodeURIComponent(user)}?max=${max}&clocks=false&evals=false&opening=false&literate=false`
   const res = await fetch(url, { headers: { Accept: 'application/x-chess-pgn' } })
   if (res.status === 404) throw new Error(`Joueur « ${user} » introuvable sur Lichess`)
   if (res.status === 429) throw new Error('Trop de requêtes vers Lichess, réessayez dans une minute')
   if (!res.ok) throw new Error(`Lichess a répondu ${res.status}`)
   const pgn = await res.text()
+  onProgress?.({ fetched: 0, label: 'Analyse des parties…' })
   const games = parsePgn(pgn, user, 'lichess')
   if (games.length === 0) throw new Error(`Aucune partie exploitable pour « ${user} »`)
+  onProgress?.({ fetched: games.length, label: `${games.length} partie(s) récupérée(s)` })
   return games
+}
+
+interface ChessComArchives {
+  archives?: string[]
+}
+
+/**
+ * Telecharge les parties d'un joueur via l'API publique Chess.com.
+ * Les archives sont mensuelles : on remonte l'historique complet, du mois le plus
+ * recent au plus ancien, jusqu'a reunir `max` parties.
+ */
+export async function fetchChessComGames(
+  username: string,
+  max = 500,
+  onProgress?: ImportProgress,
+): Promise<ImportedGame[]> {
+  const user = username.trim()
+  if (!user) throw new Error('Pseudo Chess.com manquant')
+
+  onProgress?.({ fetched: 0, label: 'Lecture des archives Chess.com…' })
+  const listRes = await fetch(`https://api.chess.com/pub/player/${encodeURIComponent(user.toLowerCase())}/games/archives`)
+  if (listRes.status === 404) throw new Error(`Joueur « ${user} » introuvable sur Chess.com`)
+  if (listRes.status === 429) throw new Error('Trop de requêtes vers Chess.com, réessayez dans une minute')
+  if (!listRes.ok) throw new Error(`Chess.com a répondu ${listRes.status}`)
+
+  const { archives } = (await listRes.json()) as ChessComArchives
+  if (!archives || archives.length === 0) throw new Error(`Aucune partie publiée par « ${user} » sur Chess.com`)
+
+  // Historique complet, du mois le plus recent au plus ancien
+  const months = [...archives].reverse()
+  const collected: ImportedGame[] = []
+
+  for (const [index, month] of months.entries()) {
+    if (collected.length >= max) break
+    const period = month.slice(-7).replace('/', '-')
+    onProgress?.({
+      fetched: collected.length,
+      label: `Mois ${index + 1}/${months.length} (${period}) — ${collected.length} partie(s)`,
+    })
+    const res = await fetch(`${month}/pgn`)
+    if (!res.ok) continue
+    const text = await res.text()
+    const remaining = max - collected.length
+    // Les archives sont chronologiques : on garde la fin du mois, la plus recente d'abord
+    const games = parsePgn(text, user, 'chesscom', remaining * 2).reverse()
+    collected.push(...games.slice(0, remaining))
+  }
+
+  if (collected.length === 0) throw new Error(`Aucune partie standard exploitable pour « ${user} »`)
+  onProgress?.({ fetched: collected.length, label: `${collected.length} partie(s) récupérée(s)` })
+  return collected
 }
 
 /** Fusionne sans doublons (meme identifiant). */

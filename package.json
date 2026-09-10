@@ -12,13 +12,18 @@
     "typecheck": "tsc -b --noEmit",
     "verify": "node scripts/verify.mjs",
     "smoke": "vite build --ssr scripts/smoke.tsx --outDir dist-ssr --logLevel warn && node dist-ssr/smoke.js",
-    "pieces": "node scripts/build-pieces.mjs"
+    "pieces": "node scripts/build-pieces.mjs",
+    "engine": "node scripts/copy-engine.mjs",
+    "predev": "node scripts/copy-engine.mjs",
+    "prebuild": "node scripts/copy-engine.mjs",
+    "prepreview": "node scripts/copy-engine.mjs"
   },
   "dependencies": {
     "chess.js": "^1.4.0",
     "d3-hierarchy": "^3.1.2",
     "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "react-dom": "^19.2.0",
+    "stockfish": "^18.0.8"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.1.14",

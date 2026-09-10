@@ -1,22 +1,40 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import OpeningTree, { type TreeFilter } from './components/OpeningTree'
+import OpeningTree, { type ColorMode, type TreeFilter } from './components/OpeningTree'
 import Chessboard from './components/Chessboard'
 import MoveList from './components/MoveList'
 import SearchBar from './components/SearchBar'
 import StudyPanel from './components/StudyPanel'
-import GamesPanel from './components/GamesPanel'
+import GamesPanel, { type Platform } from './components/GamesPanel'
 import ExplorerPanel from './components/ExplorerPanel'
+import EvalBar from './components/EvalBar'
+import EnginePanel from './components/EnginePanel'
+import ExplainPanel from './components/ExplainPanel'
 import { PieceSprite } from './components/pieces'
+import { engine } from './lib/engine'
+import { useEngine } from './lib/useEngine'
 import { positionFromSans } from './lib/chess'
+import { useMoveStats } from './lib/moveStats'
+import { explainMove } from './lib/explain'
 import { buildTree, followSans, nearestNamed, type TreeIndex } from './lib/tree'
 import { buildBranchStatus, loadProgress, markExplored, saveProgress, setStatus } from './lib/progress'
 import { loadGames, mapGamesToTree, mergeGames, parsePgn, saveGames } from './lib/games'
 import type { ImportedGame, OpeningsData, ProgressMap, StudyStatus } from './lib/types'
 
-type PanelTab = 'study' | 'games' | 'explorer'
+type PanelTab = 'ideas' | 'study' | 'games' | 'explorer'
 type MobileView = 'tree' | 'board' | 'study' | 'games'
 
-const USER_KEY = 'chess-openings:username'
+const USER_KEY = 'chess-openings:usernames:v2'
+
+const loadUsernames = (): Record<Platform, string> => {
+  try {
+    const raw = localStorage.getItem(USER_KEY)
+    if (raw) return JSON.parse(raw) as Record<Platform, string>
+    // Reprise de l'ancien reglage mono-plateforme
+    return { lichess: localStorage.getItem('chess-openings:username') ?? '', chesscom: '' }
+  } catch {
+    return { lichess: '', chesscom: '' }
+  }
+}
 
 function useMediaQuery(query: string) {
   const [matches, setMatches] = useState(() => window.matchMedia(query).matches)
@@ -45,11 +63,15 @@ export default function App() {
   const [progress, setProgress] = useState<ProgressMap>(() => loadProgress())
   const [games, setGames] = useState<ImportedGame[]>(() => loadGames())
   const [filter, setFilter] = useState<TreeFilter>('all')
+  const [colorMode, setColorMode] = useState<ColorMode>('study')
+  const [visibleParents, setVisibleParents] = useState<string[]>([])
   const [orientation, setOrientation] = useState<'white' | 'black'>('white')
-  const [tab, setTab] = useState<PanelTab>('study')
+  const [tab, setTab] = useState<PanelTab>('ideas')
   const [mobileView, setMobileView] = useState<MobileView>('tree')
-  const [username, setUsername] = useState(() => localStorage.getItem(USER_KEY) ?? '')
+  const [usernames, setUsernames] = useState<Record<Platform, string>>(loadUsernames)
   const [activeGame, setActiveGame] = useState<ImportedGame | null>(null)
+  const [engineOn, setEngineOn] = useState(() => localStorage.getItem('chess-openings:engine') === 'on')
+  const [storageWarning, setStorageWarning] = useState(false)
   const [dropping, setDropping] = useState(false)
   const isDesktop = useMediaQuery('(min-width: 1024px)')
   const dropDepth = useRef(0)
@@ -65,8 +87,9 @@ export default function App() {
   }, [])
 
   useEffect(() => saveProgress(progress), [progress])
-  useEffect(() => saveGames(games), [games])
-  useEffect(() => localStorage.setItem(USER_KEY, username), [username])
+  useEffect(() => setStorageWarning(!saveGames(games)), [games])
+  useEffect(() => localStorage.setItem(USER_KEY, JSON.stringify(usernames)), [usernames])
+  useEffect(() => localStorage.setItem('chess-openings:engine', engineOn ? 'on' : 'off'), [engineOn])
 
   const root = tree?.root ?? null
 
@@ -80,6 +103,28 @@ export default function App() {
   const anchorId = anchor?.id ?? ''
   const freeLine = useMemo(() => line.slice(matched), [line, matched])
   const outOfBook = freeLine.length > 0
+
+  /**
+   * Partie chargee dont la ligne courante est un prefixe : on affiche alors toute
+   * la suite reellement jouee, et pas seulement les coups deja parcourus.
+   */
+  const gameLine = useMemo(() => {
+    if (!activeGame) return null
+    const sans = activeGame.sans
+    if (line.length > sans.length) return null
+    for (let i = 0; i < line.length; i++) if (line[i] !== sans[i]) return null
+    return sans
+  }, [activeGame, line])
+
+  /** Greffe affichee dans l'arbre : la partie entiere si elle est chargee, sinon la ligne courante. */
+  const graft = useMemo(() => {
+    if (!root) return { anchorId: '', sans: [] as string[] }
+    if (gameLine) {
+      const result = followSans(root, gameLine)
+      return { anchorId: result.node.id, sans: gameLine.slice(result.matched) }
+    }
+    return { anchorId, sans: freeLine }
+  }, [root, gameLine, anchorId, freeLine])
   const selectedId = line.join(' ')
   const position = useMemo(() => positionFromSans(line), [line])
   const pathIds = useMemo(() => prefixesOf(line), [line])
@@ -98,6 +143,18 @@ export default function App() {
     () => new Set(outOfBook ? [] : (anchor?.children.map((c) => c.san) ?? [])),
     [anchor, outOfBook],
   )
+  const engineSnapshot = useEngine(position.fen, engineOn)
+  const moveStats = useMoveStats(visibleParents, colorMode === 'stats')
+  const handleVisibleParents = useCallback((ids: string[]) => {
+    setVisibleParents((prev) => (prev.length === ids.length && prev.every((v, i) => v === ids[i]) ? prev : ids))
+  }, [])
+  /** Explication du dernier coup joue. */
+  const explanation = useMemo(
+    () => explainMove(line, position.lastMoveDetail, named?.family),
+    [line, position.lastMoveDetail, named],
+  )
+  /** Coup suivant de la partie chargee, s'il en reste. */
+  const nextGameMove = gameLine && line.length < gameLine.length ? gameLine[line.length] : null
 
   // La branche parcourue est memorisee et depliee automatiquement
   useEffect(() => {
@@ -145,11 +202,13 @@ export default function App() {
     (game: ImportedGame) => {
       setActiveGame(game)
       if (game.color) setOrientation(game.color)
-      // On charge toute la partie : la portion hors theorie se greffe en pointilles
-      setLine(game.sans)
+      // On se place la ou la theorie s'arrete : la suite reellement jouee est
+      // greffee en pointilles et se parcourt coup par coup avec ▶.
+      const stop = root ? followSans(root, game.sans).matched : 0
+      setLine(game.sans.slice(0, stop))
       if (!isDesktop) setMobileView('tree')
     },
-    [isDesktop],
+    [isDesktop, root],
   )
 
   // Navigation clavier dans la ligne courante
@@ -160,14 +219,18 @@ export default function App() {
       if (e.key === 'ArrowLeft' && line.length > 0) {
         e.preventDefault()
         setLine((prev) => prev.slice(0, -1))
-      } else if (e.key === 'ArrowRight' && !outOfBook && anchor?.children.length) {
-        e.preventDefault()
-        playMove(anchor.children[0].san)
+      } else if (e.key === 'ArrowRight') {
+        // Priorite a la partie chargee, sinon variante principale de la theorie
+        const next = nextGameMove ?? (outOfBook ? null : (anchor?.children[0]?.san ?? null))
+        if (next) {
+          e.preventDefault()
+          playMove(next)
+        }
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [line, anchor, outOfBook, playMove])
+  }, [line, anchor, outOfBook, playMove, nextGameMove])
 
   // Depot d'un fichier PGN n'importe ou sur la page
   useEffect(() => {
@@ -188,7 +251,7 @@ export default function App() {
       const file = e.dataTransfer?.files?.[0]
       if (!file) return
       void file.text().then((text) => {
-        const parsed = parsePgn(text, username)
+        const parsed = parsePgn(text, [usernames.lichess, usernames.chesscom])
         if (parsed.length > 0) {
           importGames(parsed)
           setTab('games')
@@ -206,7 +269,7 @@ export default function App() {
       window.removeEventListener('dragover', onDragOver)
       window.removeEventListener('drop', onDrop)
     }
-  }, [username, importGames, isDesktop])
+  }, [usernames, importGames, isDesktop])
 
   if (loadError) {
     return (
@@ -228,10 +291,15 @@ export default function App() {
     )
   }
 
+  const forwardMove = nextGameMove ?? (outOfBook ? null : (anchor.children[0]?.san ?? null))
+
   const boardBlock = (
     <div className="space-y-2.5">
-      <div style={{ containerType: 'inline-size' }}>
-        <Chessboard position={position} orientation={orientation} knownSans={knownSans} onMove={playMove} />
+      <div className="flex gap-1.5" style={{ containerType: 'inline-size' }}>
+        <EvalBar snapshot={engineSnapshot} orientation={orientation} enabled={engineOn} />
+        <div className="min-w-0 flex-1">
+          <Chessboard position={position} orientation={orientation} knownSans={knownSans} onMove={playMove} />
+        </div>
       </div>
 
       <div className="flex items-center gap-1">
@@ -252,13 +320,23 @@ export default function App() {
           ◀
         </button>
         <button
-          onClick={() => anchor.children[0] && playMove(anchor.children[0].san)}
-          disabled={outOfBook || !anchor.children.length}
+          onClick={() => forwardMove && playMove(forwardMove)}
+          disabled={!forwardMove}
           className="rounded-lg border border-slate-700 px-2.5 py-1.5 text-xs text-slate-300 hover:bg-slate-800 disabled:opacity-30"
-          title="Avancer dans la variante principale (→)"
+          title={nextGameMove ? 'Coup suivant de la partie (→)' : 'Avancer dans la variante principale (→)'}
         >
           ▶
         </button>
+        {gameLine && (
+          <button
+            onClick={() => setLine(gameLine)}
+            disabled={line.length === gameLine.length}
+            className="rounded-lg border border-slate-700 px-2.5 py-1.5 text-xs text-slate-300 hover:bg-slate-800 disabled:opacity-30"
+            title="Fin de la partie"
+          >
+            ⏭
+          </button>
+        )}
         <button
           onClick={() => setOrientation((o) => (o === 'white' ? 'black' : 'white'))}
           className="ml-auto rounded-lg border border-slate-700 px-2.5 py-1.5 text-xs text-slate-300 hover:bg-slate-800"
@@ -300,17 +378,38 @@ export default function App() {
             <span className="truncate">
               Partie : {activeGame.white} – {activeGame.black} ({activeGame.result})
             </span>
-            <button onClick={() => setActiveGame(null)} className="shrink-0 text-purple-400 hover:text-purple-200">
+            <button
+              onClick={() => setActiveGame(null)}
+              className="shrink-0 text-purple-400 hover:text-purple-200"
+              title="Fermer la partie"
+            >
               ✕
             </button>
           </div>
-          {activeGame.url && (
-            <a href={activeGame.url} target="_blank" rel="noreferrer" className="text-purple-400 underline">
-              Voir sur Lichess
-            </a>
-          )}
+          <p className="mt-0.5 text-purple-300/80">
+            {gameLine
+              ? `Demi-coup ${line.length} / ${gameLine.length} · ▶ suit les coups réellement joués`
+              : 'Vous avez quitté la ligne de cette partie'}
+            {activeGame.url && (
+              <>
+                {' · '}
+                <a href={activeGame.url} target="_blank" rel="noreferrer" className="text-purple-400 underline">
+                  Voir la partie
+                </a>
+              </>
+            )}
+          </p>
         </div>
       )}
+
+      <EnginePanel
+        snapshot={engineSnapshot}
+        enabled={engineOn}
+        onToggle={() => setEngineOn((on) => !on)}
+        outOfBook={outOfBook}
+        onPlayMove={playMove}
+        failure={engine.failure}
+      />
     </div>
   )
 
@@ -333,8 +432,8 @@ export default function App() {
       games={mapping.games}
       nodeId={anchorId}
       nodeStats={mapping.stats.get(anchorId)}
-      username={username}
-      onUsernameChange={setUsername}
+      usernames={usernames}
+      onUsernameChange={(platform, value) => setUsernames((prev) => ({ ...prev, [platform]: value }))}
       onImport={importGames}
       onSelectGame={openGame}
       onClear={() => {
@@ -348,6 +447,15 @@ export default function App() {
 
   const explorerBlock = <ExplorerPanel uci={position.uci} knownSans={knownSans} onPlayMove={playMove} />
 
+  const ideasBlock = (
+    <ExplainPanel
+      explanation={explanation}
+      openingName={named?.name}
+      eco={named?.eco}
+      outOfBook={outOfBook}
+    />
+  )
+
   const treeBlock = (
     <OpeningTree
       root={root}
@@ -357,15 +465,19 @@ export default function App() {
       branchStatus={branchStatus}
       ownStatus={ownStatus}
       gameStats={mapping.stats}
-      freeLine={freeLine}
-      anchorId={anchorId}
+      freeLine={graft.sans}
+      anchorId={graft.anchorId}
       filter={filter}
+      colorMode={colorMode}
+      moveStats={moveStats}
+      onVisibleParents={handleVisibleParents}
       onSelect={(node) => selectPath(node.id)}
       onToggle={(node) => toggleNode(node.id)}
     />
   )
 
   const tabs: { id: PanelTab; label: string }[] = [
+    { id: 'ideas', label: 'Idées' },
     { id: 'study', label: 'Étude' },
     { id: 'games', label: `Parties${games.length ? ` (${games.length})` : ''}` },
     { id: 'explorer', label: 'Lichess' },
@@ -375,14 +487,14 @@ export default function App() {
     <div className="flex h-full flex-col bg-slate-950">
       <PieceSprite />
       <header className="z-20 shrink-0 border-b border-slate-800 bg-slate-900/70 px-3 py-2.5 backdrop-blur lg:px-4">
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 lg:gap-3">
           <div className="hidden shrink-0 items-baseline gap-2 sm:flex">
             <h1 className="text-base font-bold text-slate-100">Arbre des ouvertures</h1>
             <span className="hidden text-[11px] text-slate-500 xl:inline">
               {tree.data.openings.toLocaleString('fr-FR')} variantes · données Lichess
             </span>
           </div>
-          <div className="min-w-0 flex-1 lg:max-w-md">
+          <div className="order-last w-full min-w-0 sm:order-none sm:w-auto sm:flex-1 lg:max-w-md">
             <SearchBar data={tree.data} onSelect={selectPath} />
           </div>
           <div className="flex shrink-0 rounded-lg border border-slate-700 p-0.5">
@@ -397,6 +509,27 @@ export default function App() {
                 onClick={() => setFilter(option.id)}
                 className={`rounded-md px-2 py-1 text-xs font-medium whitespace-nowrap transition-colors ${
                   filter === option.id ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+          <div
+            className="flex shrink-0 rounded-lg border border-slate-700 p-0.5"
+            title="Ce que traduit la couleur des branches"
+          >
+            {(
+              [
+                { id: 'study', label: 'Ma progression' },
+                { id: 'stats', label: 'Résultats' },
+              ] as const
+            ).map((option) => (
+              <button
+                key={option.id}
+                onClick={() => setColorMode(option.id)}
+                className={`rounded-md px-2 py-1 text-xs font-medium whitespace-nowrap transition-colors ${
+                  colorMode === option.id ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-slate-200'
                 }`}
               >
                 {option.label}
@@ -427,6 +560,7 @@ export default function App() {
                 ))}
               </div>
               <div className="pt-3">
+                {tab === 'ideas' && ideasBlock}
                 {tab === 'study' && studyBlock}
                 {tab === 'games' && gamesBlock}
                 {tab === 'explorer' && explorerBlock}
@@ -440,6 +574,7 @@ export default function App() {
             {mobileView === 'board' && (
               <div className="h-full space-y-4 overflow-y-auto p-3 pb-20">
                 {boardBlock}
+                {ideasBlock}
                 {explorerBlock}
               </div>
             )}
@@ -473,6 +608,13 @@ export default function App() {
             ))}
           </div>
         </nav>
+      )}
+
+      {storageWarning && (
+        <div className="fixed inset-x-3 bottom-16 z-40 rounded-lg border border-amber-700/60 bg-amber-950/90 px-3 py-2 text-xs text-amber-200 backdrop-blur lg:inset-x-auto lg:right-4 lg:bottom-4 lg:max-w-sm">
+          Stockage du navigateur saturé : les dernières parties importées ne seront pas conservées au prochain
+          chargement. Réduisez le nombre de parties ou supprimez-en depuis l’onglet Parties.
+        </div>
       )}
 
       {dropping && (

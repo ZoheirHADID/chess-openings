@@ -3,6 +3,7 @@ import { hierarchy, tree as d3tree, type HierarchyPointNode } from 'd3-hierarchy
 import type { StudyStatus, TreeNode } from '../lib/types'
 import type { GameNodeStats } from '../lib/games'
 import { STATUS_COLOR } from '../lib/progress'
+import { confidenceOf, scoreColor, totalOf, whiteScore, type MoveStat } from '../lib/moveStats'
 
 const NODE_W = 172
 const NODE_H = 30
@@ -12,6 +13,8 @@ const COL = 214
 const DEFAULT_CHILDREN = 8
 
 export type TreeFilter = 'all' | 'repertoire'
+/** Ce que traduit la couleur des branches. */
+export type ColorMode = 'study' | 'stats'
 
 interface Datum {
   node: TreeNode
@@ -32,6 +35,11 @@ interface Props {
   /** Noeud theorique le plus profond atteint par la ligne courante. */
   anchorId: string
   filter: TreeFilter
+  colorMode: ColorMode
+  /** Bilan Lichess par coup, indexe par identifiant de noeud. */
+  moveStats: Map<string, MoveStat>
+  /** Signale les positions dont les enfants sont affiches (a interroger). */
+  onVisibleParents: (ids: string[]) => void
   onSelect: (node: TreeNode) => void
   onToggle: (node: TreeNode) => void
 }
@@ -62,6 +70,9 @@ export default function OpeningTree({
   freeLine,
   anchorId,
   filter,
+  colorMode,
+  moveStats,
+  onVisibleParents,
   onSelect,
   onToggle,
 }: Props) {
@@ -139,6 +150,13 @@ export default function OpeningTree({
 
   const nodes = useMemo(() => layout.descendants(), [layout])
   const links = useMemo(() => layout.links(), [layout])
+
+  // Les positions dont on affiche les enfants sont celles a interroger
+  useEffect(() => {
+    if (colorMode !== 'stats') return
+    const parents = nodes.filter((n) => n.data.children?.length).map((n) => n.data.node.id)
+    onVisibleParents(parents)
+  }, [nodes, colorMode, onVisibleParents])
 
   const bounds = useMemo(() => {
     let minX = Infinity
@@ -286,15 +304,28 @@ export default function OpeningTree({
             const target = link.target.data.node
             const status = branchStatus.get(target.id)
             const onPath = pathIds.has(target.id)
-            const stroke = status ? STATUS_COLOR[status] : '#334155'
-            const width = onPath ? 3.4 : status ? 2.2 : Math.min(2, 0.7 + Math.log10(target.count + 1) * 0.7)
+            const stat = moveStats.get(target.id)
+            const statsStroke = stat ? scoreColor(whiteScore(stat), confidenceOf(stat)) : '#1e293b'
+            const stroke = colorMode === 'stats' ? statsStroke : status ? STATUS_COLOR[status] : '#334155'
+            const width =
+              colorMode === 'stats'
+                ? stat
+                  ? Math.min(4, 1 + Math.log10(totalOf(stat) + 1) * 0.6)
+                  : 1
+                : onPath
+                  ? 3.4
+                  : status
+                    ? 2.2
+                    : Math.min(2, 0.7 + Math.log10(target.count + 1) * 0.7)
             return (
               <path
                 key={target.id}
                 d={linkPath(link.source as HierarchyPointNode<Datum>, link.target as HierarchyPointNode<Datum>)}
                 fill="none"
-                stroke={target.virtual ? '#f59e0b' : onPath ? '#e2e8f0' : stroke}
-                strokeOpacity={target.virtual ? 0.9 : onPath ? 0.95 : status ? 0.75 : 0.45}
+                stroke={target.virtual ? '#f59e0b' : onPath && colorMode === 'study' ? '#e2e8f0' : stroke}
+                strokeOpacity={
+                  target.virtual ? 0.9 : colorMode === 'stats' ? (stat ? 0.95 : 0.3) : onPath ? 0.95 : status ? 0.75 : 0.45
+                }
                 strokeWidth={target.virtual ? 2.4 : width}
                 strokeDasharray={target.virtual ? '5 4' : undefined}
                 strokeLinecap="round"
@@ -372,7 +403,35 @@ export default function OpeningTree({
                     {label.length > 30 ? `${label.slice(0, 29)}…` : label}
                   </text>
                 )}
-                {node.eco && (
+                {colorMode === 'stats' && !isRoot ? (
+                  (() => {
+                    const stat = moveStats.get(node.id)
+                    if (!stat) return null
+                    const score = whiteScore(stat)
+                    return (
+                      <g className="pointer-events-none">
+                        <rect
+                          x={w - 40}
+                          y={NODE_H / 2 - 8}
+                          width={32}
+                          height={16}
+                          rx={4}
+                          fill={scoreColor(score, confidenceOf(stat))}
+                        />
+                        <text
+                          x={w - 24}
+                          y={NODE_H / 2 + 4}
+                          fontSize={10}
+                          fontWeight={700}
+                          textAnchor="middle"
+                          fill={score >= 0.5 ? '#0f172a' : '#450a0a'}
+                        >
+                          {Math.round(score * 100)}%
+                        </text>
+                      </g>
+                    )
+                  })()
+                ) : node.eco ? (
                   <text
                     x={w - 10}
                     y={NODE_H / 2 + 4}
@@ -383,7 +442,7 @@ export default function OpeningTree({
                   >
                     {node.eco}
                   </text>
-                )}
+                ) : null}
                 {games && (
                   <g transform={`translate(${w - 8}, 4)`} className="pointer-events-none">
                     <circle r={8} fill="#7c3aed" />
@@ -476,6 +535,21 @@ export default function OpeningTree({
           ◎
         </button>
       </div>
+
+      {colorMode === 'stats' && (
+        <div className="absolute top-3 left-3 rounded-lg border border-slate-700 bg-slate-900/90 px-2.5 py-1.5 text-[10px] text-slate-300 backdrop-blur">
+          <p className="mb-1 font-semibold">Score des blancs (Lichess)</p>
+          <div className="flex items-center gap-1.5">
+            <span>Noirs</span>
+            <span
+              className="h-2 w-24 rounded-full"
+              style={{ background: 'linear-gradient(to right, rgb(248,113,113), rgb(100,116,139), rgb(219,234,254))' }}
+            />
+            <span>Blancs</span>
+          </div>
+          <p className="mt-1 text-slate-500">Épaisseur = popularité · gris = peu de parties</p>
+        </div>
+      )}
 
       {filter === 'repertoire' && nodes.length <= 1 && (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-6">

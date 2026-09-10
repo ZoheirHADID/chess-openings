@@ -14,6 +14,8 @@ import { buildTree } from '../src/lib/tree'
 import { positionFromSans } from '../src/lib/chess'
 import { mapGamesToTree, parsePgn } from '../src/lib/games'
 import { buildBranchStatus, setStatus } from '../src/lib/progress'
+import { explainMove } from '../src/lib/explain'
+import ExplainPanel from '../src/components/ExplainPanel'
 import type { OpeningsData, ProgressMap } from '../src/lib/types'
 
 const data = JSON.parse(readFileSync('public/openings.json', 'utf8')) as OpeningsData
@@ -57,6 +59,9 @@ const checks: [string, () => string][] = [
           gameStats={mapping.stats}
           freeLine={freeLine}
           anchorId={selectedId}
+          colorMode="study"
+          moveStats={new Map()}
+          onVisibleParents={() => {}}
           filter="all"
           onSelect={() => {}}
           onToggle={() => {}}
@@ -76,6 +81,18 @@ const checks: [string, () => string][] = [
       ),
   ],
   ['MoveList', () => renderToString(<MoveList sans={sans} theoryPlies={3} onGoTo={() => {}} />)],
+  [
+    'ExplainPanel',
+    () =>
+      renderToString(
+        <ExplainPanel
+          explanation={explainMove(sans, positionFromSans(sans).lastMoveDetail, 'Sicilian Defense')}
+          openingName="Sicilian Defense"
+          eco="B27"
+          outOfBook={false}
+        />,
+      ),
+  ],
   [
     'StudyPanel',
     () =>
@@ -99,7 +116,7 @@ const checks: [string, () => string][] = [
           games={mapping.games}
           nodeId="d4 Nf6 c4 e6"
           nodeStats={mapping.stats.get('d4 Nf6 c4 e6')}
-          username="zoheir"
+          usernames={{ lichess: 'zoheir', chesscom: 'zoheir' }}
           onUsernameChange={() => {}}
           onImport={() => {}}
           onSelectGame={() => {}}
@@ -120,6 +137,36 @@ for (const [name, run] of checks) {
     failed++
     console.error(`  ECHEC ${name} :`, err)
   }
+}
+
+// Explications : commentaire redige, prophylaxie, roque
+const spanish = explainMove(
+  ['e4', 'e5', 'Nf3', 'Nc6', 'Bb5'],
+  positionFromSans(['e4', 'e5', 'Nf3', 'Nc6', 'Bb5']).lastMoveDetail,
+  'Ruy Lopez',
+)
+console.log(`  ${spanish?.numbered} : ${spanish?.note ? 'note theorique OK' : 'NOTE MANQUANTE'}`)
+if (!spanish?.note || !spanish.plan || spanish.numbered !== '3. Bb5') {
+  console.error('  ECHEC explication de 3. Bb5')
+  failed++
+}
+
+const morphy = ['e4', 'e5', 'Nf3', 'Nc6', 'Bb5', 'a6']
+const morphyExp = explainMove(morphy, positionFromSans(morphy).lastMoveDetail, 'Ruy Lopez')
+if (!morphyExp?.points.some((p) => p.includes('b5'))) {
+  console.error('  ECHEC prophylaxie de 3...a6 non detectee :', morphyExp?.points)
+  failed++
+}
+if (morphyExp?.numbered !== '3...a6') {
+  console.error('  ECHEC numerotation du coup noir :', morphyExp?.numbered)
+  failed++
+}
+
+const castle = ['e4', 'e5', 'Nf3', 'Nc6', 'Bc4', 'Bc5', 'O-O']
+const castleExp = explainMove(castle, positionFromSans(castle).lastMoveDetail)
+if (!castleExp?.points.some((p) => p.includes('roque'))) {
+  console.error('  ECHEC roque non detecte :', castleExp?.points)
+  failed++
 }
 
 // La branche libre doit apparaitre greffee sur l'arbre

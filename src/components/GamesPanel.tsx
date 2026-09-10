@@ -1,14 +1,31 @@
 import { useMemo, useRef, useState } from 'react'
 import type { ImportedGame } from '../lib/types'
 import type { GameNodeStats } from '../lib/games'
-import { fetchLichessGames, parsePgn } from '../lib/games'
+import { fetchChessComGames, fetchLichessGames, parsePgn } from '../lib/games'
+
+export type Platform = 'lichess' | 'chesscom'
+
+const PLATFORMS: { id: Platform; label: string; hint: string }[] = [
+  { id: 'lichess', label: 'Lichess', hint: 'Vos 60 dernières parties via l’API publique Lichess.' },
+  {
+    id: 'chesscom',
+    label: 'Chess.com',
+    hint: 'Vos 60 dernières parties via les archives mensuelles publiques Chess.com.',
+  },
+]
+
+const SOURCE_LABEL: Record<ImportedGame['source'], string> = {
+  lichess: 'Lichess',
+  chesscom: 'Chess.com',
+  pgn: 'PGN',
+}
 
 interface Props {
   games: ImportedGame[]
   nodeId: string
   nodeStats?: GameNodeStats
-  username: string
-  onUsernameChange: (value: string) => void
+  usernames: Record<Platform, string>
+  onUsernameChange: (platform: Platform, value: string) => void
   onImport: (games: ImportedGame[]) => void
   onSelectGame: (game: ImportedGame) => void
   onClear: () => void
@@ -25,14 +42,17 @@ export default function GamesPanel({
   games,
   nodeId,
   nodeStats,
-  username,
+  usernames,
   onUsernameChange,
   onImport,
   onSelectGame,
   onClear,
 }: Props) {
+  const [platform, setPlatform] = useState<Platform>('lichess')
+  const [limit, setLimit] = useState(500)
   const [pgnText, setPgnText] = useState('')
   const [loading, setLoading] = useState(false)
+  const [progressLabel, setProgressLabel] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [scope, setScope] = useState<'branch' | 'all'>('branch')
@@ -48,35 +68,75 @@ export default function GamesPanel({
     setLoading(true)
     setError(null)
     setNotice(null)
+    setProgressLabel(null)
     try {
       const result = await fn()
       onImport(result)
-      setNotice(`${result.length} partie(s) analysée(s)`)
+      setNotice(`${result.length} partie(s) analysée(s) et placée(s) dans l’arbre`)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Import impossible')
     } finally {
       setLoading(false)
+      setProgressLabel(null)
     }
   }
 
+  const onProgress = (info: { fetched: number; label: string }) => setProgressLabel(info.label)
+
+  const allNames = [usernames.lichess, usernames.chesscom]
+  const username = usernames[platform]
+  const active = PLATFORMS.find((p) => p.id === platform)!
+
   const handleFile = async (file: File) => {
     const text = await file.text()
-    await runImport(() => parsePgn(text, username))
+    await runImport(() => parsePgn(text, allNames))
   }
 
   return (
     <div className="space-y-4">
       <section className="space-y-2">
         <h3 className="text-xs font-semibold tracking-wide text-slate-400 uppercase">Importer mes parties</h3>
+        <div className="flex rounded-lg border border-slate-700 p-0.5">
+          {PLATFORMS.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => setPlatform(item.id)}
+              className={`flex-1 rounded-md px-2 py-1 text-xs font-medium transition-colors ${
+                platform === item.id ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+
         <div className="flex gap-1.5">
           <input
             value={username}
-            onChange={(e) => onUsernameChange(e.target.value)}
-            placeholder="Pseudo Lichess"
+            onChange={(e) => onUsernameChange(platform, e.target.value)}
+            placeholder={`Pseudo ${active.label}`}
             className="min-w-0 flex-1 rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-sm text-slate-100 placeholder:text-slate-500 focus:border-blue-500 focus:outline-none"
           />
+          <select
+            value={limit}
+            onChange={(e) => setLimit(Number(e.target.value))}
+            className="shrink-0 rounded-lg border border-slate-700 bg-slate-900 px-1.5 py-1.5 text-xs text-slate-200 focus:border-blue-500 focus:outline-none"
+            aria-label="Nombre de parties à importer"
+          >
+            {[100, 500, 2000, 5000].map((value) => (
+              <option key={value} value={value}>
+                {value}
+              </option>
+            ))}
+          </select>
           <button
-            onClick={() => runImport(() => fetchLichessGames(username))}
+            onClick={() =>
+              runImport(() =>
+                platform === 'lichess'
+                  ? fetchLichessGames(username, limit, onProgress)
+                  : fetchChessComGames(username, limit, onProgress),
+              )
+            }
             disabled={loading || !username.trim()}
             className="shrink-0 rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-blue-500 disabled:opacity-40"
           >
@@ -84,9 +144,15 @@ export default function GamesPanel({
           </button>
         </div>
         <p className="text-[11px] text-slate-500">
-          Récupère vos 60 dernières parties via l’API publique Lichess et les place automatiquement sur la branche
-          jouée.
+          {active.hint} L’import remonte tout l’historique jusqu’au nombre de parties choisi, et chaque partie est
+          replacée automatiquement sur la branche d’ouverture jouée.
         </p>
+        {progressLabel && (
+          <p className="flex items-center gap-2 text-[11px] text-blue-300">
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-blue-400" />
+            {progressLabel}
+          </p>
+        )}
 
         <div className="flex gap-1.5">
           <button
@@ -96,7 +162,7 @@ export default function GamesPanel({
             Fichier PGN…
           </button>
           <button
-            onClick={() => runImport(() => parsePgn(pgnText, username))}
+            onClick={() => runImport(() => parsePgn(pgnText, allNames))}
             disabled={!pgnText.trim()}
             className="flex-1 rounded-lg border border-slate-700 px-2.5 py-1.5 text-xs text-slate-300 hover:bg-slate-800 disabled:opacity-40"
           >
@@ -185,9 +251,12 @@ export default function GamesPanel({
                       </span>
                       {game.date && <span className="ml-auto shrink-0 text-[10px] text-slate-500">{game.date}</span>}
                     </span>
-                    <span className="mt-0.5 block truncate text-[11px] text-slate-400">
-                      {game.openingEco && <span className="text-slate-500">{game.openingEco} </span>}
-                      {game.openingName ?? 'Hors théorie répertoriée'}
+                    <span className="mt-0.5 flex items-baseline gap-1.5 text-[11px] text-slate-400">
+                      <span className="truncate">
+                        {game.openingEco && <span className="text-slate-500">{game.openingEco} </span>}
+                        {game.openingName ?? 'Hors théorie répertoriée'}
+                      </span>
+                      <span className="ml-auto shrink-0 text-[10px] text-slate-600">{SOURCE_LABEL[game.source]}</span>
                     </span>
                   </button>
                 </li>

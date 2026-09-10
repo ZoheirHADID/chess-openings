@@ -67,7 +67,7 @@ export interface ImportedGame {
   sans: string[]
   /** Couleur jouee par l'utilisateur si connue. */
   color?: 'white' | 'black'
-  source: 'pgn' | 'lichess'
+  source: 'pgn' | 'lichess' | 'chesscom'
   /** Noeud le plus profond atteint dans l'arbre theorique. */
   nodeId?: string
   /** Derniere ouverture nommee rencontree sur le chemin. */

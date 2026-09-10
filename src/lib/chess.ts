@@ -11,12 +11,28 @@ export interface PositionInfo {
   board: (BoardSquare | null)[][]
   turn: 'w' | 'b'
   lastMove?: { from: string; to: string }
+  /** Objet complet du dernier coup (pour l'analyse explicative). */
+  lastMoveDetail?: DetailedMove
   /** Coups en notation UCI, pour l'explorateur Lichess. */
   uci: string[]
   /** Coups legaux depuis la position, en SAN. */
   legal: string[]
   /** Coups legaux detailles, pour jouer sur l'echiquier. */
   moves: LegalMove[]
+}
+
+export interface DetailedMove {
+  color: 'w' | 'b'
+  from: string
+  to: string
+  piece: string
+  captured?: string
+  promotion?: string
+  flags: string
+  san: string
+  /** FEN avant et apres le coup. */
+  before: string
+  after: string
 }
 
 export interface LegalMove {
@@ -37,11 +53,13 @@ export function positionFromSans(sans: string[]): PositionInfo {
   const chess = new Chess()
   const uci: string[] = []
   let lastMove: { from: string; to: string } | undefined
+  let lastMoveDetail: DetailedMove | undefined
   for (const san of sans) {
     try {
       const move = chess.move(san)
       uci.push(move.from + move.to + (move.promotion ?? ''))
       lastMove = { from: move.from, to: move.to }
+      lastMoveDetail = move as unknown as DetailedMove
     } catch {
       break
     }
@@ -52,6 +70,7 @@ export function positionFromSans(sans: string[]): PositionInfo {
     board: chess.board() as unknown as (BoardSquare | null)[][],
     turn: chess.turn(),
     lastMove,
+    lastMoveDetail,
     uci,
     legal: chess.moves(),
     moves: chess.moves({ verbose: true }).map((m) => ({
