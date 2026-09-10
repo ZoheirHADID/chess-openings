@@ -16,7 +16,8 @@
     "engine": "node scripts/copy-engine.mjs",
     "predev": "node scripts/copy-engine.mjs",
     "prebuild": "node scripts/copy-engine.mjs",
-    "prepreview": "node scripts/copy-engine.mjs"
+    "prepreview": "node scripts/copy-engine.mjs",
+    "account": "vite build --ssr scripts/account.ts --outDir dist-ssr --logLevel warn && node dist-ssr/account.js"
   },
   "dependencies": {
     "chess.js": "^1.4.0",
