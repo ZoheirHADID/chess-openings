@@ -71,7 +71,11 @@ Un sélecteur en en-tête choisit ce que la couleur traduit :
 - L'utilisateur valide lui-même le statut d'une branche : **à l'étude** ou **acquise**.
 - Le statut se propage visuellement : une branche repliée se colore selon la variante la plus avancée
   qu'elle contient.
-- Vue **« Mon répertoire »** : l'arbre ne montre plus que les branches travaillées ou jouées.
+- Vue **« Mon répertoire »** : l'arbre ne montre plus que les branches travaillées ou jouées. Les branches
+  s'y ouvrent seules, mais sous deux garde-fous — profondeur de 8 demi-coups et budget de 120 nœuds —
+  sinon un répertoire nourri par des milliers de parties déplierait tout d'un coup. Un bandeau prévient
+  quand l'affichage atteint la limite de 500 branches ; le bouton `+`/`–` fonctionne dans les deux modes
+  et une branche repliée le reste jusqu'à ce qu'on y navigue.
 - **Votre score contre la référence** : sur la branche affichée, l'onglet Étude compare votre pourcentage
   de points à celui des parties Lichess pour le même coup, avec l'écart en points.
 - **« À travailler en priorité »** : les branches où vous marquez le moins (au moins 6 parties), les plus

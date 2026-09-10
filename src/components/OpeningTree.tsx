@@ -11,6 +11,12 @@ const ROW = 46
 const COL = 214
 /** Enfants affiches par defaut sur un noeud avant le bouton « + N autres ». */
 const DEFAULT_CHILDREN = 8
+/** Mode repertoire : profondeur jusqu'a laquelle les branches s'ouvrent seules. */
+const AUTO_OPEN_PLIES = 8
+/** Mode repertoire : nombre de noeuds ouverts automatiquement au maximum. */
+const AUTO_OPEN_NODES = 120
+/** Garde-fou d'affichage, tous modes confondus. */
+const MAX_NODES = 500
 
 export type TreeFilter = 'all' | 'repertoire'
 /** Ce que traduit la couleur des branches. */
@@ -42,7 +48,7 @@ interface Props {
   /** Signale les positions dont les enfants sont affiches (a interroger). */
   onVisibleParents: (ids: string[]) => void
   onSelect: (node: TreeNode) => void
-  onToggle: (node: TreeNode) => void
+  onExpand: (node: TreeNode) => void
   /** Demande l'affichage des parties qui passent par ce noeud. */
   onOpenGames: (nodeId: string) => void
 }
@@ -76,13 +82,15 @@ export default function OpeningTree({
   moveStats,
   onVisibleParents,
   onSelect,
-  onToggle,
+  onExpand,
   onOpenGames,
 }: Props) {
   const svgRef = useRef<SVGSVGElement | null>(null)
   const [size, setSize] = useState({ width: 800, height: 600 })
   const [transform, setTransform] = useState<Transform>({ x: 90, y: 300, k: 1 })
   const [showAll, setShowAll] = useState<Set<string>>(new Set())
+  /** Noeuds explicitement replies par l'utilisateur (prioritaire sur l'ouverture automatique). */
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
   const [dragging, setDragging] = useState(false)
   const [animate, setAnimate] = useState(true)
   const pointers = useRef(new Map<number, { x: number; y: number }>())
@@ -113,6 +121,15 @@ export default function OpeningTree({
 
   // Construction de la hierarchie visible
   const layout = useMemo(() => {
+    /**
+     * Le mode repertoire ouvre les branches automatiquement, mais sous double
+     * garde-fou : une profondeur d'ouverture et un budget de noeuds. Sans cela,
+     * un repertoire nourri par des milliers de parties deplierait tout d'un coup
+     * et figerait l'affichage.
+     */
+    let autoBudget = AUTO_OPEN_NODES
+    let total = 0
+
     const build = (node: TreeNode): Datum => {
       // Coups joues greffes sur ce noeud : ils s'ajoutent aux enfants theoriques
       const played = grafts.get(node.id) ?? []
@@ -121,11 +138,17 @@ export default function OpeningTree({
       let children = node.virtual ? node.children : [...played, ...node.children]
       if (filter === 'repertoire') children = children.filter((child) => child.virtual || inRepertoire(child))
 
-      const isOpen = filter === 'repertoire' ? children.length > 0 : expanded.has(node.id)
-      if (!isOpen || children.length === 0) return { node, hidden: children.length }
+      const autoOpen =
+        filter === 'repertoire' && node.ply < AUTO_OPEN_PLIES && autoBudget > 0 && !collapsed.has(node.id)
+      const isOpen = (autoOpen || expanded.has(node.id)) && !collapsed.has(node.id)
+      if (!isOpen || children.length === 0 || total > MAX_NODES) {
+        return { node, hidden: children.length }
+      }
 
       const limit = showAll.has(node.id) ? children.length : DEFAULT_CHILDREN
       const shown = children.slice(0, limit)
+      total += shown.length
+      if (autoOpen) autoBudget -= shown.length
       return {
         node,
         hidden: children.length - shown.length,
@@ -136,7 +159,7 @@ export default function OpeningTree({
     const h = hierarchy(build(root), (d) => d.children)
     d3tree<Datum>().nodeSize([ROW, COL])(h)
     return h as HierarchyPointNode<Datum>
-  }, [root, expanded, filter, showAll, inRepertoire, grafts])
+  }, [root, expanded, collapsed, filter, showAll, inRepertoire, grafts])
 
   const nodes = useMemo(() => layout.descendants(), [layout])
   const links = useMemo(() => layout.links(), [layout])
@@ -144,7 +167,10 @@ export default function OpeningTree({
   // Les positions dont on affiche les enfants sont celles a interroger
   useEffect(() => {
     if (colorMode !== 'stats') return
-    const parents = nodes.filter((n) => n.data.children?.length).map((n) => n.data.node.id)
+    const parents = nodes
+      .filter((n) => n.data.children?.length)
+      .slice(0, 40)
+      .map((n) => n.data.node.id)
     onVisibleParents(parents)
   }, [nodes, colorMode, onVisibleParents])
 
@@ -177,6 +203,17 @@ export default function OpeningTree({
     },
     [nodes, size.width, size.height],
   )
+
+  useEffect(() => {
+    setCollapsed((prev) => {
+      if (prev.size === 0) return prev
+      const parts = selectedId ? selectedId.split(' ') : []
+      const next = new Set(prev)
+      next.delete('')
+      for (let i = 1; i <= parts.length; i++) next.delete(parts.slice(0, i).join(' '))
+      return next.size === prev.size ? prev : next
+    })
+  }, [selectedId])
 
   const lastCentered = useRef('')
   useEffect(() => {
@@ -495,13 +532,22 @@ export default function OpeningTree({
                 {own && (
                   <circle cx={-1} cy={NODE_H / 2} r={4.5} fill={STATUS_COLOR[own]} className="pointer-events-none" />
                 )}
-                {hasChildren && filter === 'all' && (
+                {hasChildren && (
                   <g
                     transform={`translate(${w + 4}, ${NODE_H / 2})`}
                     className="cursor-pointer"
                     onClick={(e) => {
                       e.stopPropagation()
-                      onToggle(node)
+                      if (isOpen) {
+                        setCollapsed((prev) => new Set(prev).add(node.id))
+                      } else {
+                        setCollapsed((prev) => {
+                          const next = new Set(prev)
+                          next.delete(node.id)
+                          return next
+                        })
+                        onExpand(node)
+                      }
                     }}
                   >
                     <circle r={9} fill={isOpen ? '#1e293b' : '#334155'} stroke="#475569" strokeWidth={1} />
@@ -576,6 +622,12 @@ export default function OpeningTree({
           ◎
         </button>
       </div>
+
+      {nodes.length >= MAX_NODES && (
+        <div className="absolute top-2 right-2 rounded-lg border border-amber-700/60 bg-amber-950/80 px-2 py-1 text-[10px] text-amber-200 backdrop-blur">
+          Affichage limité à {MAX_NODES} branches — repliez une branche pour en ouvrir d’autres.
+        </div>
+      )}
 
       {colorMode === 'stats' && (
         <div className="absolute top-2 left-2 max-w-[70%] rounded-lg border border-slate-700 bg-slate-900/90 px-2 py-1 text-[9px] text-slate-300 backdrop-blur sm:top-3 sm:left-3 sm:px-2.5 sm:py-1.5 sm:text-[10px]">

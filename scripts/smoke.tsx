@@ -76,7 +76,7 @@ const checks: [string, () => string][] = [
           onVisibleParents={() => {}}
           filter="all"
           onSelect={() => {}}
-          onToggle={() => {}}
+          onExpand={() => {}}
           onOpenGames={() => {}}
         />,
       ),
@@ -194,6 +194,44 @@ const castleExp = explainMove(castle, positionFromSans(castle).lastMoveDetail)
 if (!castleExp?.points.some((p) => p.includes('roque'))) {
   console.error('  ECHEC roque non detecte :', castleExp?.points)
   failed++
+}
+
+// Le mode « Mon repertoire » ne doit jamais deplier tout l'arbre d'un coup
+{
+  // Repertoire artificiellement enorme : toutes les branches des huit premiers coups
+  const huge = new Map<string, { total: number; wins: number; draws: number; losses: number; asWhite: number; asBlack: number; endingHere: number }>()
+  const fill = (node: typeof tree.root, depth: number) => {
+    if (depth > 8) return
+    huge.set(node.id, { total: 1, wins: 1, draws: 0, losses: 0, asWhite: 1, asBlack: 0, endingHere: 0 })
+    for (const child of node.children) fill(child, depth + 1)
+  }
+  fill(tree.root, 0)
+
+  const html = renderToString(
+    <OpeningTree
+      root={tree.root}
+      expanded={new Set([''])}
+      selectedId=""
+      pathIds={new Set([''])}
+      branchStatus={new Map()}
+      ownStatus={new Map()}
+      gameStats={huge as never}
+      grafts={new Map()}
+      colorMode="study"
+      moveStats={new Map()}
+      onVisibleParents={() => {}}
+      filter="repertoire"
+      onSelect={() => {}}
+      onExpand={() => {}}
+      onOpenGames={() => {}}
+    />,
+  )
+  const rendered = (html.match(/<rect /g) ?? []).length
+  console.log(`  mode repertoire : ${huge.size} branches eligibles, ${rendered} elements rendus`)
+  if (rendered > 1500) {
+    console.error('  ECHEC le mode repertoire deplie tout larbre')
+    failed++
+  }
 }
 
 // Les coups faibles doivent etre critiques, pas seulement decrits

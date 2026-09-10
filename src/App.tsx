@@ -264,10 +264,10 @@ export default function App() {
     if (next !== 'all') setOrientation(next)
   }, [])
 
-  const toggleNode = useCallback((id: string) => {
+  const toggleNode = useCallback((id: string, forceOpen = false) => {
     setExpanded((prev) => {
       const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
+      if (next.has(id) && !forceOpen) next.delete(id)
       else next.add(id)
       return next
     })
@@ -691,7 +691,7 @@ export default function App() {
       moveStats={moveStats}
       onVisibleParents={handleVisibleParents}
       onSelect={(node) => selectPath(node.id)}
-      onToggle={(node) => toggleNode(node.id)}
+      onExpand={(node) => toggleNode(node.id, true)}
       onOpenGames={(nodeId) => {
         selectPath(nodeId)
         setTab('games')
