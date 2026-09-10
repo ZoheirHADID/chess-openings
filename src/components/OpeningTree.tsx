@@ -27,6 +27,10 @@ interface Props {
   branchStatus: Map<string, StudyStatus>
   ownStatus: Map<string, StudyStatus>
   gameStats: Map<string, GameNodeStats>
+  /** Coups joues au-dela de l'arbre theorique, greffes sur anchorId. */
+  freeLine: string[]
+  /** Noeud theorique le plus profond atteint par la ligne courante. */
+  anchorId: string
   filter: TreeFilter
   onSelect: (node: TreeNode) => void
   onToggle: (node: TreeNode) => void
@@ -55,6 +59,8 @@ export default function OpeningTree({
   branchStatus,
   ownStatus,
   gameStats,
+  freeLine,
+  anchorId,
   filter,
   onSelect,
   onToggle,
@@ -87,26 +93,49 @@ export default function OpeningTree({
 
   // Construction de la hierarchie visible
   const layout = useMemo(() => {
+    /** Chaine de coups joues hors theorie, rendue en pointilles. */
+    const buildFree = (index: number, parentId: string, ply: number): Datum => {
+      const san = freeLine[index]
+      const id = parentId ? `${parentId} ${san}` : san
+      const node: TreeNode = {
+        id,
+        san,
+        ply,
+        count: 0,
+        children: [],
+        parent: null,
+        virtual: true,
+      }
+      return {
+        node,
+        hidden: 0,
+        children: index + 1 < freeLine.length ? [buildFree(index + 1, id, ply + 1)] : undefined,
+      }
+    }
+
     const build = (node: TreeNode): Datum => {
       let children = node.children
       if (filter === 'repertoire') children = children.filter(inRepertoire)
 
-      const isOpen = filter === 'repertoire' ? children.length > 0 : expanded.has(node.id)
-      if (!isOpen || children.length === 0) return { node, hidden: children.length }
+      const isAnchor = node.id === anchorId && freeLine.length > 0
+      const isOpen = filter === 'repertoire' ? children.length > 0 || isAnchor : expanded.has(node.id)
+      if (!isOpen || (children.length === 0 && !isAnchor)) return { node, hidden: children.length }
 
       const limit = showAll.has(node.id) ? children.length : DEFAULT_CHILDREN
       const shown = children.slice(0, limit)
+      const built = shown.map(build)
+      if (isAnchor) built.unshift(buildFree(0, node.id, node.ply + 1))
       return {
         node,
         hidden: children.length - shown.length,
-        children: shown.map(build),
+        children: built,
       }
     }
 
     const h = hierarchy(build(root), (d) => d.children)
     d3tree<Datum>().nodeSize([ROW, COL])(h)
     return h as HierarchyPointNode<Datum>
-  }, [root, expanded, filter, showAll, inRepertoire])
+  }, [root, expanded, filter, showAll, inRepertoire, freeLine, anchorId])
 
   const nodes = useMemo(() => layout.descendants(), [layout])
   const links = useMemo(() => layout.links(), [layout])
@@ -264,9 +293,10 @@ export default function OpeningTree({
                 key={target.id}
                 d={linkPath(link.source as HierarchyPointNode<Datum>, link.target as HierarchyPointNode<Datum>)}
                 fill="none"
-                stroke={onPath ? '#e2e8f0' : stroke}
-                strokeOpacity={onPath ? 0.95 : status ? 0.75 : 0.45}
-                strokeWidth={width}
+                stroke={target.virtual ? '#f59e0b' : onPath ? '#e2e8f0' : stroke}
+                strokeOpacity={target.virtual ? 0.9 : onPath ? 0.95 : status ? 0.75 : 0.45}
+                strokeWidth={target.virtual ? 2.4 : width}
+                strokeDasharray={target.virtual ? '5 4' : undefined}
                 strokeLinecap="round"
               />
             )
@@ -292,10 +322,21 @@ export default function OpeningTree({
                   height={NODE_H}
                   rx={9}
                   className="cursor-pointer"
-                  fill={selected ? '#1d4ed8' : onPath ? '#1e293b' : '#0f172a'}
-                  stroke={selected ? '#93c5fd' : own ? STATUS_COLOR[own] : branch ? STATUS_COLOR[branch] : '#334155'}
-                  strokeWidth={selected ? 2 : own ? 1.8 : 1}
-                  strokeOpacity={own || selected ? 1 : 0.7}
+                  fill={selected ? '#1d4ed8' : node.virtual ? '#292116' : onPath ? '#1e293b' : '#0f172a'}
+                  stroke={
+                    selected
+                      ? '#93c5fd'
+                      : node.virtual
+                        ? '#f59e0b'
+                        : own
+                          ? STATUS_COLOR[own]
+                          : branch
+                            ? STATUS_COLOR[branch]
+                            : '#334155'
+                  }
+                  strokeWidth={selected ? 2 : own || node.virtual ? 1.8 : 1}
+                  strokeOpacity={own || selected || node.virtual ? 1 : 0.7}
+                  strokeDasharray={node.virtual ? '4 3' : undefined}
                   onClick={() => handleNodeClick(node)}
                 />
                 <text
@@ -309,6 +350,17 @@ export default function OpeningTree({
                 >
                   {isRoot ? 'Départ' : node.san}
                 </text>
+                {node.virtual && node.ply === (anchorId ? anchorId.split(' ').length : 0) + 1 && (
+                  <text
+                    x={10}
+                    y={NODE_H + 13}
+                    fontSize={10}
+                    fill="#f59e0b"
+                    className="pointer-events-none select-none"
+                  >
+                    hors théorie
+                  </text>
+                )}
                 {label && !isRoot && (
                   <text
                     x={10}

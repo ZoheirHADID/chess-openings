@@ -41,6 +41,8 @@ export interface TreeNode {
   count: number
   children: TreeNode[]
   parent: TreeNode | null
+  /** Vrai pour un coup joue hors de l'arbre theorique (branche libre). */
+  virtual?: boolean
 }
 
 export type StudyStatus = 'explored' | 'studying' | 'mastered'

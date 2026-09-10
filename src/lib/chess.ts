@@ -15,6 +15,15 @@ export interface PositionInfo {
   uci: string[]
   /** Coups legaux depuis la position, en SAN. */
   legal: string[]
+  /** Coups legaux detailles, pour jouer sur l'echiquier. */
+  moves: LegalMove[]
+}
+
+export interface LegalMove {
+  from: string
+  to: string
+  san: string
+  promotion?: string
 }
 
 const cache = new Map<string, PositionInfo>()
@@ -45,6 +54,12 @@ export function positionFromSans(sans: string[]): PositionInfo {
     lastMove,
     uci,
     legal: chess.moves(),
+    moves: chess.moves({ verbose: true }).map((m) => ({
+      from: m.from,
+      to: m.to,
+      san: m.san,
+      promotion: m.promotion,
+    })),
   }
   if (cache.size > 600) cache.clear()
   cache.set(key, info)

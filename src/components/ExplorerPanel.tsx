@@ -4,10 +4,11 @@ import { fetchExplorer, formatCount, totalGames, type ExplorerResult } from '../
 interface Props {
   uci: string[]
   onPlayMove: (san: string) => void
-  playableSans: Set<string>
+  /** Coups presents dans l'arbre theorique depuis cette position. */
+  knownSans: Set<string>
 }
 
-export default function ExplorerPanel({ uci, onPlayMove, playableSans }: Props) {
+export default function ExplorerPanel({ uci, onPlayMove, knownSans }: Props) {
   const [data, setData] = useState<ExplorerResult | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -68,16 +69,21 @@ export default function ExplorerPanel({ uci, onPlayMove, playableSans }: Props) 
           <ul className="space-y-1">
             {data.moves.map((move) => {
               const moveTotal = totalGames(move)
-              const known = playableSans.has(move.san)
+              const known = knownSans.has(move.san)
               return (
                 <li key={move.uci}>
                   <button
                     onClick={() => onPlayMove(move.san)}
-                    disabled={!known}
-                    title={known ? 'Aller à ce coup dans l’arbre' : 'Coup absent de l’arbre théorique'}
-                    className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-slate-800 disabled:cursor-default disabled:opacity-50"
+                    title={known ? 'Jouer ce coup (branche répertoriée)' : 'Jouer ce coup (hors théorie)'}
+                    className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-slate-800"
                   >
-                    <span className="w-14 shrink-0 font-mono text-sm text-slate-100">{move.san}</span>
+                    <span className="flex w-14 shrink-0 items-center gap-1 font-mono text-sm text-slate-100">
+                      <span
+                        className="h-1.5 w-1.5 shrink-0 rounded-full"
+                        style={{ background: known ? '#22c55e' : '#475569' }}
+                      />
+                      {move.san}
+                    </span>
                     <span className="w-12 shrink-0 text-[11px] text-slate-400">{formatCount(moveTotal)}</span>
                     <span className="flex h-2.5 min-w-0 flex-1 overflow-hidden rounded-full bg-slate-800">
                       <span className="bg-slate-100" style={{ width: `${(move.white / moveTotal) * 100}%` }} />

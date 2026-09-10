@@ -5,6 +5,8 @@ import { nearestNamed } from '../lib/tree'
 
 interface Props {
   node: TreeNode
+  /** La ligne courante sort de l'arbre theorique : le marquage est suspendu. */
+  outOfBook: boolean
   progress: ProgressMap
   byId: Map<string, TreeNode>
   onSetStatus: (status: StudyStatus | null) => void
@@ -20,7 +22,15 @@ const DESCRIPTIONS: Record<StudyStatus, string> = {
   mastered: 'Validée : je la joue de mémoire',
 }
 
-export default function StudyPanel({ node, progress, byId, onSetStatus, onSelectNode, onReset }: Props) {
+export default function StudyPanel({
+  node,
+  outOfBook,
+  progress,
+  byId,
+  onSetStatus,
+  onSelectNode,
+  onReset,
+}: Props) {
   const current = progress[node.id]?.status
   const stats = useMemo(() => progressStats(progress), [progress])
 
@@ -68,7 +78,7 @@ export default function StudyPanel({ node, progress, byId, onSetStatus, onSelect
                 key={status}
                 onClick={() => onSetStatus(active ? null : status)}
                 title={DESCRIPTIONS[status]}
-                disabled={!node.id}
+                disabled={!node.id || outOfBook}
                 className={`rounded-lg border px-2 py-2 text-xs font-medium transition-all disabled:cursor-not-allowed disabled:opacity-40 ${
                   active ? 'text-slate-900' : 'text-slate-300 hover:border-slate-500'
                 }`}
@@ -83,11 +93,13 @@ export default function StudyPanel({ node, progress, byId, onSetStatus, onSelect
           })}
         </div>
         <p className="mt-2 text-xs text-slate-500">
-          {!node.id
-            ? 'Sélectionnez un coup dans l’arbre pour le marquer.'
-            : current
-              ? DESCRIPTIONS[current]
-              : 'Marquez cette branche pour la retrouver dans votre répertoire.'}
+          {outOfBook
+            ? 'Ligne hors théorie : revenez sur la branche répertoriée pour la marquer.'
+            : !node.id
+              ? 'Jouez un coup ou sélectionnez une branche pour la marquer.'
+              : current
+                ? DESCRIPTIONS[current]
+                : 'Marquez cette branche pour la retrouver dans votre répertoire.'}
         </p>
       </section>
 

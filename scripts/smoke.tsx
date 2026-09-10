@@ -39,6 +39,8 @@ const selectedNode = tree.byId.get(selectedId)!
 const sans = selectedId.split(' ')
 const position = positionFromSans(sans)
 const expanded = new Set(['', 'e4', 'e4 c5', 'e4 c5 Nf3'])
+// Ligne partiellement hors theorie : 1. e4 c5 2. Nf3 puis un coup libre
+const freeLine = ['Na3']
 
 const checks: [string, () => string][] = [
   [
@@ -53,20 +55,34 @@ const checks: [string, () => string][] = [
           branchStatus={buildBranchStatus(progress)}
           ownStatus={new Map(Object.entries(progress).map(([id, e]) => [id, e.status]))}
           gameStats={mapping.stats}
+          freeLine={freeLine}
+          anchorId={selectedId}
           filter="all"
           onSelect={() => {}}
           onToggle={() => {}}
         />,
       ),
   ],
-  ['Chessboard', () => renderToString(<Chessboard position={position} orientation="white" />)],
-  ['MoveList', () => renderToString(<MoveList sans={sans} onGoTo={() => {}} />)],
+  [
+    'Chessboard',
+    () =>
+      renderToString(
+        <Chessboard
+          position={position}
+          orientation="white"
+          knownSans={new Set(selectedNode.children.map((c) => c.san))}
+          onMove={() => {}}
+        />,
+      ),
+  ],
+  ['MoveList', () => renderToString(<MoveList sans={sans} theoryPlies={3} onGoTo={() => {}} />)],
   [
     'StudyPanel',
     () =>
       renderToString(
         <StudyPanel
           node={selectedNode}
+          outOfBook={false}
           progress={progress}
           byId={tree.byId}
           onSetStatus={() => {}}
@@ -104,6 +120,33 @@ for (const [name, run] of checks) {
     failed++
     console.error(`  ECHEC ${name} :`, err)
   }
+}
+
+// La branche libre doit apparaitre greffee sur l'arbre
+const treeHtml = checks[0][1]()
+for (const needle of ['Na3', 'hors th']) {
+  if (!treeHtml.includes(needle)) {
+    console.error(`  ECHEC la branche hors theorie n'est pas rendue (${needle} absent)`)
+    failed++
+  }
+}
+
+// L'echiquier doit referencer les pieces du sprite
+const boardHtml = checks[1][1]()
+if (!boardHtml.includes('#piece-wK')) {
+  console.error('  ECHEC les pieces SVG ne sont pas rendues')
+  failed++
+}
+
+// La position doit exposer des coups jouables sur l'echiquier
+if (position.moves.length === 0) {
+  console.error('  ECHEC aucun coup legal expose par positionFromSans')
+  failed++
+}
+const knight = position.moves.find((m) => m.from === 'b8' && m.to === 'c6')
+if (!knight || knight.san !== 'Nc6') {
+  console.error('  ECHEC coup legal Nc6 introuvable')
+  failed++
 }
 
 // Controles metier sur le placement des parties

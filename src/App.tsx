@@ -6,8 +6,9 @@ import SearchBar from './components/SearchBar'
 import StudyPanel from './components/StudyPanel'
 import GamesPanel from './components/GamesPanel'
 import ExplorerPanel from './components/ExplorerPanel'
+import { PieceSprite } from './components/pieces'
 import { positionFromSans } from './lib/chess'
-import { ancestorIds, buildTree, nearestNamed, type TreeIndex } from './lib/tree'
+import { buildTree, followSans, nearestNamed, type TreeIndex } from './lib/tree'
 import { buildBranchStatus, loadProgress, markExplored, saveProgress, setStatus } from './lib/progress'
 import { loadGames, mapGamesToTree, mergeGames, parsePgn, saveGames } from './lib/games'
 import type { ImportedGame, OpeningsData, ProgressMap, StudyStatus } from './lib/types'
@@ -28,10 +29,18 @@ function useMediaQuery(query: string) {
   return matches
 }
 
+/** Tous les prefixes d'une ligne, racine comprise : sert a surligner le chemin. */
+const prefixesOf = (line: string[]) => {
+  const ids = new Set<string>([''])
+  for (let i = 1; i <= line.length; i++) ids.add(line.slice(0, i).join(' '))
+  return ids
+}
+
 export default function App() {
   const [tree, setTree] = useState<TreeIndex | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
-  const [selectedId, setSelectedId] = useState('')
+  /** Ligne de coups courante — source de verite de la position et de l'arbre. */
+  const [line, setLine] = useState<string[]>([])
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set(['']))
   const [progress, setProgress] = useState<ProgressMap>(() => loadProgress())
   const [games, setGames] = useState<ImportedGame[]>(() => loadGames())
@@ -59,11 +68,21 @@ export default function App() {
   useEffect(() => saveGames(games), [games])
   useEffect(() => localStorage.setItem(USER_KEY, username), [username])
 
-  const root = tree?.root
-  const selectedNode = (selectedId && tree?.byId.get(selectedId)) || root
-  const sans = useMemo(() => (selectedId ? selectedId.split(' ') : []), [selectedId])
-  const position = useMemo(() => positionFromSans(sans), [sans])
-  const pathIds = useMemo(() => new Set(ancestorIds(selectedId)), [selectedId])
+  const root = tree?.root ?? null
+
+  // Ancrage de la ligne courante dans l'arbre theorique
+  const { anchor, matched } = useMemo(() => {
+    if (!root) return { anchor: null, matched: 0 }
+    const result = followSans(root, line)
+    return { anchor: result.node, matched: result.matched }
+  }, [root, line])
+
+  const anchorId = anchor?.id ?? ''
+  const freeLine = useMemo(() => line.slice(matched), [line, matched])
+  const outOfBook = freeLine.length > 0
+  const selectedId = line.join(' ')
+  const position = useMemo(() => positionFromSans(line), [line])
+  const pathIds = useMemo(() => prefixesOf(line), [line])
   const branchStatus = useMemo(() => buildBranchStatus(progress), [progress])
   const ownStatus = useMemo(
     () => new Map(Object.entries(progress).map(([id, entry]) => [id, entry.status])),
@@ -73,24 +92,41 @@ export default function App() {
     () => (root ? mapGamesToTree(games, root) : { games: [], stats: new Map() }),
     [games, root],
   )
-  const named = selectedNode ? nearestNamed(selectedNode) : null
-  const childSans = useMemo(() => new Set(selectedNode?.children.map((c) => c.san) ?? []), [selectedNode])
+  const named = anchor ? nearestNamed(anchor) : null
+  /** Coups theoriques jouables depuis la position affichee. */
+  const knownSans = useMemo(
+    () => new Set(outOfBook ? [] : (anchor?.children.map((c) => c.san) ?? [])),
+    [anchor, outOfBook],
+  )
 
-  /** Selectionne une branche : deplie le chemin, memorise le passage, recentre. */
+  // La branche parcourue est memorisee et depliee automatiquement
+  useEffect(() => {
+    if (!anchorId) return
+    setProgress((prev) => markExplored(prev, anchorId) ?? prev)
+    setExpanded((prev) => {
+      const next = new Set(prev)
+      const parts = anchorId.split(' ')
+      for (let i = 0; i < parts.length; i++) next.add(parts.slice(0, i).join(' '))
+      next.add(anchorId)
+      return next
+    })
+  }, [anchorId])
+
+  /** Positionne la ligne sur un chemin SAN complet (theorique ou libre). */
   const selectPath = useCallback(
-    (id: string, options?: { expandChildren?: boolean }) => {
-      setSelectedId(id)
-      setExpanded((prev) => {
-        const next = new Set(prev)
-        for (const ancestor of ancestorIds(id)) next.add(ancestor)
-        if (options?.expandChildren !== false) next.add(id)
-        return next
-      })
-      setProgress((prev) => markExplored(prev, id) ?? prev)
+    (id: string) => {
+      setLine(id ? id.split(' ') : [])
       if (!isDesktop) setMobileView('tree')
     },
     [isDesktop],
   )
+
+  /** Joue un coup depuis la position courante. */
+  const playMove = useCallback((san: string) => {
+    setLine((prev) => [...prev, san])
+  }, [])
+
+  const goToPly = useCallback((ply: number) => setLine((prev) => prev.slice(0, ply)), [])
 
   const toggleNode = useCallback((id: string) => {
     setExpanded((prev) => {
@@ -101,40 +137,37 @@ export default function App() {
     })
   }, [])
 
-  const goToPly = useCallback((ply: number) => setSelectedId(sans.slice(0, ply).join(' ')), [sans])
-
-  const importGames = useCallback(
-    (incoming: ImportedGame[]) => {
-      setGames((prev) => mergeGames(prev, incoming).games)
-    },
-    [],
-  )
+  const importGames = useCallback((incoming: ImportedGame[]) => {
+    setGames((prev) => mergeGames(prev, incoming).games)
+  }, [])
 
   const openGame = useCallback(
     (game: ImportedGame) => {
       setActiveGame(game)
       if (game.color) setOrientation(game.color)
-      if (game.nodeId !== undefined) selectPath(game.nodeId, { expandChildren: false })
+      // On charge toute la partie : la portion hors theorie se greffe en pointilles
+      setLine(game.sans)
+      if (!isDesktop) setMobileView('tree')
     },
-    [selectPath],
+    [isDesktop],
   )
 
-  // Navigation clavier dans la branche courante
+  // Navigation clavier dans la ligne courante
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return
-      if (e.key === 'ArrowLeft' && sans.length > 0) {
+      if (e.key === 'ArrowLeft' && line.length > 0) {
         e.preventDefault()
-        setSelectedId(sans.slice(0, -1).join(' '))
-      } else if (e.key === 'ArrowRight' && selectedNode?.children.length) {
+        setLine((prev) => prev.slice(0, -1))
+      } else if (e.key === 'ArrowRight' && !outOfBook && anchor?.children.length) {
         e.preventDefault()
-        selectPath(selectedNode.children[0].id)
+        playMove(anchor.children[0].san)
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [sans, selectedNode, selectPath])
+  }, [line, anchor, outOfBook, playMove])
 
   // Depot d'un fichier PGN n'importe ou sur la page
   useEffect(() => {
@@ -179,14 +212,15 @@ export default function App() {
     return (
       <div className="flex h-full items-center justify-center p-8 text-center">
         <p className="text-sm text-rose-400">
-          Impossible de charger la base d’ouvertures ({loadError}).<br />
+          Impossible de charger la base d’ouvertures ({loadError}).
+          <br />
           Lancez <code className="text-slate-300">npm run data</code> puis rechargez la page.
         </p>
       </div>
     )
   }
 
-  if (!tree || !root || !selectedNode) {
+  if (!tree || !root || !anchor) {
     return (
       <div className="flex h-full items-center justify-center">
         <p className="animate-pulse text-sm text-slate-400">Chargement des ouvertures Lichess…</p>
@@ -195,29 +229,71 @@ export default function App() {
   }
 
   const boardBlock = (
-    <div className="space-y-3">
+    <div className="space-y-2.5">
       <div style={{ containerType: 'inline-size' }}>
-        <Chessboard position={position} orientation={orientation} />
+        <Chessboard position={position} orientation={orientation} knownSans={knownSans} onMove={playMove} />
       </div>
-      <div className="flex items-center justify-between gap-2">
-        <div className="min-w-0">
-          <p className="truncate text-sm font-semibold text-slate-100">
-            {named?.name ?? 'Position initiale'}
-          </p>
-          <p className="text-[11px] text-slate-500">
-            {named?.eco ? `${named.eco} · ` : ''}
-            {selectedNode.count > 1 ? `${selectedNode.count} variantes en aval` : 'Fin de branche'}
-          </p>
-        </div>
+
+      <div className="flex items-center gap-1">
+        <button
+          onClick={() => setLine([])}
+          disabled={line.length === 0}
+          className="rounded-lg border border-slate-700 px-2.5 py-1.5 text-xs text-slate-300 hover:bg-slate-800 disabled:opacity-30"
+          title="Position de départ"
+        >
+          ⏮
+        </button>
+        <button
+          onClick={() => setLine((prev) => prev.slice(0, -1))}
+          disabled={line.length === 0}
+          className="rounded-lg border border-slate-700 px-2.5 py-1.5 text-xs text-slate-300 hover:bg-slate-800 disabled:opacity-30"
+          title="Reculer d’un coup (←)"
+        >
+          ◀
+        </button>
+        <button
+          onClick={() => anchor.children[0] && playMove(anchor.children[0].san)}
+          disabled={outOfBook || !anchor.children.length}
+          className="rounded-lg border border-slate-700 px-2.5 py-1.5 text-xs text-slate-300 hover:bg-slate-800 disabled:opacity-30"
+          title="Avancer dans la variante principale (→)"
+        >
+          ▶
+        </button>
         <button
           onClick={() => setOrientation((o) => (o === 'white' ? 'black' : 'white'))}
-          className="shrink-0 rounded-lg border border-slate-700 px-2.5 py-1.5 text-xs text-slate-300 hover:bg-slate-800"
+          className="ml-auto rounded-lg border border-slate-700 px-2.5 py-1.5 text-xs text-slate-300 hover:bg-slate-800"
           title="Retourner l’échiquier"
         >
           ⇅ Retourner
         </button>
       </div>
-      <MoveList sans={sans} onGoTo={goToPly} />
+
+      <div>
+        <p className="truncate text-sm font-semibold text-slate-100">{named?.name ?? 'Position initiale'}</p>
+        <p className="text-[11px] text-slate-500">
+          {named?.eco ? `${named.eco} · ` : ''}
+          {anchor.count > 1 ? `${anchor.count} variantes en aval` : 'Fin de branche théorique'}
+          {' · '}
+          {position.turn === 'w' ? 'trait aux blancs' : 'trait aux noirs'}
+        </p>
+      </div>
+
+      {outOfBook && (
+        <div className="flex items-center gap-2 rounded-lg border border-amber-700/50 bg-amber-950/25 px-2.5 py-1.5 text-[11px] text-amber-300">
+          <span className="min-w-0 flex-1">
+            {freeLine.length} coup{freeLine.length > 1 ? 's' : ''} hors théorie Lichess — branche libre en pointillés.
+          </span>
+          <button
+            onClick={() => setLine(line.slice(0, matched))}
+            className="shrink-0 rounded border border-amber-700/60 px-1.5 py-0.5 hover:bg-amber-900/40"
+          >
+            Revenir
+          </button>
+        </div>
+      )}
+
+      <MoveList sans={line} theoryPlies={matched} onGoTo={goToPly} />
+
       {activeGame && (
         <div className="rounded-lg border border-purple-700/50 bg-purple-950/20 px-2.5 py-2 text-[11px] text-purple-200">
           <div className="flex items-center justify-between gap-2">
@@ -228,9 +304,6 @@ export default function App() {
               ✕
             </button>
           </div>
-          <p className="mt-1 font-mono text-[10px] break-words text-purple-300/80">
-            Suite jouée : {activeGame.sans.slice(sans.length, sans.length + 12).join(' ') || '—'}
-          </p>
           {activeGame.url && (
             <a href={activeGame.url} target="_blank" rel="noreferrer" className="text-purple-400 underline">
               Voir sur Lichess
@@ -243,11 +316,12 @@ export default function App() {
 
   const studyBlock = (
     <StudyPanel
-      node={selectedNode}
+      node={anchor}
+      outOfBook={outOfBook}
       progress={progress}
       byId={tree.byId}
-      onSetStatus={(status: StudyStatus | null) => setProgress((prev) => setStatus(prev, selectedId, status))}
-      onSelectNode={(id) => selectPath(id, { expandChildren: false })}
+      onSetStatus={(status: StudyStatus | null) => setProgress((prev) => setStatus(prev, anchorId, status))}
+      onSelectNode={selectPath}
       onReset={() => {
         if (confirm('Effacer toute votre progression enregistrée ?')) setProgress({})
       }}
@@ -257,8 +331,8 @@ export default function App() {
   const gamesBlock = (
     <GamesPanel
       games={mapping.games}
-      nodeId={selectedId}
-      nodeStats={mapping.stats.get(selectedId)}
+      nodeId={anchorId}
+      nodeStats={mapping.stats.get(anchorId)}
       username={username}
       onUsernameChange={setUsername}
       onImport={importGames}
@@ -272,16 +346,7 @@ export default function App() {
     />
   )
 
-  const explorerBlock = (
-    <ExplorerPanel
-      uci={position.uci}
-      playableSans={childSans}
-      onPlayMove={(san) => {
-        const child = selectedNode.children.find((c) => c.san === san)
-        if (child) selectPath(child.id)
-      }}
-    />
-  )
+  const explorerBlock = <ExplorerPanel uci={position.uci} knownSans={knownSans} onPlayMove={playMove} />
 
   const treeBlock = (
     <OpeningTree
@@ -292,6 +357,8 @@ export default function App() {
       branchStatus={branchStatus}
       ownStatus={ownStatus}
       gameStats={mapping.stats}
+      freeLine={freeLine}
+      anchorId={anchorId}
       filter={filter}
       onSelect={(node) => selectPath(node.id)}
       onToggle={(node) => toggleNode(node.id)}
@@ -306,6 +373,7 @@ export default function App() {
 
   return (
     <div className="flex h-full flex-col bg-slate-950">
+      <PieceSprite />
       <header className="z-20 shrink-0 border-b border-slate-800 bg-slate-900/70 px-3 py-2.5 backdrop-blur lg:px-4">
         <div className="flex items-center gap-3">
           <div className="hidden shrink-0 items-baseline gap-2 sm:flex">
@@ -315,7 +383,7 @@ export default function App() {
             </span>
           </div>
           <div className="min-w-0 flex-1 lg:max-w-md">
-            <SearchBar data={tree.data} onSelect={(path) => selectPath(path, { expandChildren: false })} />
+            <SearchBar data={tree.data} onSelect={selectPath} />
           </div>
           <div className="flex shrink-0 rounded-lg border border-slate-700 p-0.5">
             {(
@@ -387,7 +455,7 @@ export default function App() {
             {(
               [
                 { id: 'tree', label: 'Arbre', icon: '🌳' },
-                { id: 'board', label: 'Position', icon: '♟' },
+                { id: 'board', label: 'Échiquier', icon: '♟' },
                 { id: 'study', label: 'Étude', icon: '🎯' },
                 { id: 'games', label: 'Parties', icon: '📥' },
               ] as const

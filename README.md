@@ -6,6 +6,15 @@ ses propres parties** pour les voir se poser automatiquement sur la branche jou�
 
 ## Fonctionnalités
 
+### Échiquier jouable
+- Pièces déplaçables au **glisser-déposer** ou en **deux clics**, sur un échiquier de facture classique
+  (palette verte type chess.com, cases strictement carrées, pièces vectorielles Cburnett).
+- Les destinations légales s'affichent en points : **vert** si le coup existe dans l'arbre théorique,
+  gris sinon. L'arbre suit chaque coup joué et recentre la branche correspondante.
+- Un coup hors répertoire ne bloque rien : la ligne se poursuit et vient se **greffer en pointillés ambre**
+  sur le dernier nœud théorique atteint, avec un bouton pour revenir dans la théorie.
+- Sélecteur de promotion, retournement de l'échiquier, boutons début / reculer / avancer, flèches `←` `→`.
+
 ### Visualisation en branches
 - Arbre préfixe de toutes les ouvertures : chaque nœud est un coup, chaque chemin une variante.
 - Dépliage progressif branche par branche (bouton `+` / `–`), avec `+ N autres coups` pour les nœuds
@@ -42,6 +51,7 @@ classique, Elo 1600+) : répartition des résultats et coups les plus joués, cl
 - **Mobile / tablette** : arbre en plein écran avec navigation par pincement, barre d'onglets inférieure
   (Arbre · Position · Étude · Parties), cibles tactiles ≥ 40 px.
 - Navigation clavier : `←` remonte d'un coup, `→` descend dans la variante principale.
+- Échiquier tactile : les pièces se déplacent au doigt, les cases restent carrées à toute largeur.
 
 ## Démarrage
 
@@ -63,6 +73,7 @@ npm run preview
 | Script | Rôle |
 | --- | --- |
 | `npm run data` | Reconstruit l'arbre depuis les TSV Lichess (`--refresh` pour re-télécharger) |
+| `npm run pieces` | Régénère le sprite SVG des pièces depuis `data/pieces/` |
 | `npm run dev` | Serveur de développement Vite |
 | `npm run build` | Vérification TypeScript + build de production |
 | `npm run verify` | Contrôle la légalité des 8 652 coups de l'arbre et le placement d'une partie |
@@ -74,11 +85,14 @@ npm run preview
   3 810 variantes de A00 à E99, jusqu'à 36 demi-coups. Les TSV sources sont conservés dans `data/raw/`
   et l'arbre compilé dans `public/openings.json` (1,2 Mo, ~180 Ko une fois compressé).
 - **Statistiques et parties** : API publiques de [lichess.org](https://lichess.org/api), sans authentification.
+- **Pièces** : jeu Cburnett ([CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/)), repris de
+  `lichess-org/lila`. Sources dans `data/pieces/`, compilées en sprite SVG.
 
 ## Architecture
 
 ```
 scripts/build-openings.mjs   Construction de l'arbre préfixe depuis les TSV Lichess
+scripts/build-pieces.mjs     Sprite SVG des 12 pièces
 scripts/verify.mjs           Contrôles de cohérence des données
 scripts/smoke.tsx            Rendu hors navigateur des composants
 src/lib/tree.ts              Arbre enrichi, recherche, navigation
@@ -87,6 +101,7 @@ src/lib/progress.ts          Statuts d'étude, propagation aux branches, persist
 src/lib/games.ts             Parsing PGN, import Lichess, placement dans l'arbre
 src/lib/explorer.ts          Opening Explorer Lichess
 src/components/OpeningTree   Visualisation SVG (d3-hierarchy) + pan/zoom tactile
+src/components/Chessboard    Échiquier jouable (glisser-déposer, deux clics, promotion)
 ```
 
 Stack : React 19, TypeScript, Vite 7, Tailwind CSS 4, chess.js, d3-hierarchy.

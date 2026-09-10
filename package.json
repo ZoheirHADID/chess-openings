@@ -11,7 +11,8 @@
     "preview": "vite preview",
     "typecheck": "tsc -b --noEmit",
     "verify": "node scripts/verify.mjs",
-    "smoke": "vite build --ssr scripts/smoke.tsx --outDir dist-ssr --logLevel warn && node dist-ssr/smoke.js"
+    "smoke": "vite build --ssr scripts/smoke.tsx --outDir dist-ssr --logLevel warn && node dist-ssr/smoke.js",
+    "pieces": "node scripts/build-pieces.mjs"
   },
   "dependencies": {
     "chess.js": "^1.4.0",
