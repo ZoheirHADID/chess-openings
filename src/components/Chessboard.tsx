@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import type { PositionInfo } from '../lib/chess'
 import { Piece } from './pieces'
 
@@ -16,19 +16,23 @@ interface Props {
   /** Coups presents dans l'arbre theorique depuis cette position. */
   knownSans: Set<string>
   onMove: (san: string) => void
+  /** Explication du dernier coup, revelee au survol de la pastille. */
+  hint?: ReactNode
 }
 
-export default function Chessboard({ position, orientation, knownSans, onMove }: Props) {
+export default function Chessboard({ position, orientation, knownSans, onMove, hint }: Props) {
   const gridRef = useRef<HTMLDivElement>(null)
   const [from, setFrom] = useState<string | null>(null)
   const [drag, setDrag] = useState<{ square: string; x: number; y: number; size: number } | null>(null)
   const [promotion, setPromotion] = useState<{ from: string; to: string } | null>(null)
+  const [hintOpen, setHintOpen] = useState(false)
 
   // Toute nouvelle position repart d'une selection vierge
   useEffect(() => {
     setFrom(null)
     setDrag(null)
     setPromotion(null)
+    setHintOpen(false)
   }, [position.fen])
 
   const squareAt = (clientX: number, clientY: number): string | null => {
@@ -101,6 +105,22 @@ export default function Chessboard({ position, orientation, knownSans, onMove }:
   )
   const rows = orientation === 'white' ? position.board : [...position.board].reverse().map((r) => [...r].reverse())
   const dragPiece = drag ? pieceAt(drag.square) : null
+
+  // Pastille d'information posee sur la case ou la derniere piece s'est arretee
+  const hintSquare = position.lastMove?.to
+  let hintPos: { left: string; top: string; alignRight: boolean; alignBottom: boolean } | null = null
+  if (hint && hintSquare) {
+    const file = FILES.indexOf(hintSquare[0])
+    const rank = Number(hintSquare[1]) - 1
+    const col = orientation === 'white' ? file : 7 - file
+    const row = orientation === 'white' ? 7 - rank : rank
+    hintPos = {
+      left: `${(col + 0.98) * 12.5}%`,
+      top: `${(row + 0.02) * 12.5}%`,
+      alignRight: col > 4,
+      alignBottom: row < 4,
+    }
+  }
 
   return (
     <div className="relative w-full select-none">
@@ -187,6 +207,53 @@ export default function Chessboard({ position, orientation, knownSans, onMove }:
           }),
         )}
       </div>
+
+      {hintPos && (
+        <div
+          className="absolute z-30"
+          style={{ left: hintPos.left, top: hintPos.top, transform: 'translate(-100%, 0)' }}
+          onMouseEnter={() => setHintOpen(true)}
+          onMouseLeave={() => setHintOpen(false)}
+        >
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              setHintOpen((open) => !open)
+            }}
+            onPointerDown={(e) => e.stopPropagation()}
+            aria-label="Pourquoi ce coup ?"
+            title="Pourquoi ce coup ?"
+            className="flex items-center justify-center rounded-full bg-slate-900/55 font-bold text-slate-100/90 ring-1 ring-slate-100/30 transition-opacity hover:bg-slate-900/90"
+            style={{
+              width: 'clamp(9px, 3cqw, 17px)',
+              height: 'clamp(9px, 3cqw, 17px)',
+              fontSize: 'clamp(6px, 2cqw, 11px)',
+              lineHeight: 1,
+              opacity: hintOpen ? 1 : 0.55,
+            }}
+          >
+            i
+          </button>
+
+          {hintOpen && (
+            <div
+              className="animate-fade-in absolute z-40 w-[min(76vw,290px)] rounded-lg border border-slate-700 bg-slate-900/95 p-2.5 text-left shadow-2xl shadow-black/70 backdrop-blur"
+              style={
+                hintPos.alignRight
+                  ? hintPos.alignBottom
+                    ? { right: 0, top: 'calc(100% + 6px)' }
+                    : { right: 0, bottom: 'calc(100% + 6px)' }
+                  : hintPos.alignBottom
+                    ? { left: 0, top: 'calc(100% + 6px)' }
+                    : { left: 0, bottom: 'calc(100% + 6px)' }
+              }
+              onPointerDown={(e) => e.stopPropagation()}
+            >
+              {hint}
+            </div>
+          )}
+        </div>
+      )}
 
       {drag && dragPiece && (
         <Piece

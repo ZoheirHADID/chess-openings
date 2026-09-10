@@ -86,12 +86,18 @@ export default function OpeningTree({
   const pinch = useRef<{ dist: number; k: number } | null>(null)
   const dragState = useRef<{ x: number; y: number; tx: number; ty: number; moved: boolean } | null>(null)
 
-  // Taille disponible
+  // Taille disponible ; sur petit ecran on demarre a un zoom plus large
+  const sized = useRef(false)
   useEffect(() => {
     const el = svgRef.current?.parentElement
     if (!el) return
     const observer = new ResizeObserver(([entry]) => {
-      setSize({ width: entry.contentRect.width, height: entry.contentRect.height })
+      const { width, height } = entry.contentRect
+      setSize({ width, height })
+      if (!sized.current && width > 0) {
+        sized.current = true
+        if (width < 700) setTransform((t) => ({ ...t, k: 0.72, x: 40, y: height / 2 }))
+      }
     })
     observer.observe(el)
     return () => observer.disconnect()
@@ -506,21 +512,21 @@ export default function OpeningTree({
       <div className="absolute right-3 bottom-3 flex flex-col gap-1.5">
         <button
           onClick={() => zoomBy(1.25)}
-          className="h-9 w-9 rounded-lg border border-slate-700 bg-slate-900/90 text-lg text-slate-200 backdrop-blur hover:bg-slate-800"
+          className="h-10 w-10 rounded-lg border border-slate-700 bg-slate-900/90 text-lg text-slate-200 backdrop-blur active:bg-slate-800 sm:h-9 sm:w-9"
           aria-label="Zoom avant"
         >
           +
         </button>
         <button
           onClick={() => zoomBy(0.8)}
-          className="h-9 w-9 rounded-lg border border-slate-700 bg-slate-900/90 text-lg text-slate-200 backdrop-blur hover:bg-slate-800"
+          className="h-10 w-10 rounded-lg border border-slate-700 bg-slate-900/90 text-lg text-slate-200 backdrop-blur active:bg-slate-800 sm:h-9 sm:w-9"
           aria-label="Zoom arrière"
         >
           –
         </button>
         <button
           onClick={fitAll}
-          className="h-9 w-9 rounded-lg border border-slate-700 bg-slate-900/90 text-xs text-slate-200 backdrop-blur hover:bg-slate-800"
+          className="h-10 w-10 rounded-lg border border-slate-700 bg-slate-900/90 text-xs text-slate-200 backdrop-blur active:bg-slate-800 sm:h-9 sm:w-9"
           aria-label="Vue d'ensemble"
           title="Vue d'ensemble"
         >
@@ -528,7 +534,7 @@ export default function OpeningTree({
         </button>
         <button
           onClick={() => centerOn(selectedId, 1)}
-          className="h-9 w-9 rounded-lg border border-slate-700 bg-slate-900/90 text-xs text-slate-200 backdrop-blur hover:bg-slate-800"
+          className="h-10 w-10 rounded-lg border border-slate-700 bg-slate-900/90 text-xs text-slate-200 backdrop-blur active:bg-slate-800 sm:h-9 sm:w-9"
           aria-label="Centrer sur la position"
           title="Centrer sur la position"
         >
@@ -537,7 +543,7 @@ export default function OpeningTree({
       </div>
 
       {colorMode === 'stats' && (
-        <div className="absolute top-3 left-3 rounded-lg border border-slate-700 bg-slate-900/90 px-2.5 py-1.5 text-[10px] text-slate-300 backdrop-blur">
+        <div className="absolute top-2 left-2 max-w-[70%] rounded-lg border border-slate-700 bg-slate-900/90 px-2 py-1 text-[9px] text-slate-300 backdrop-blur sm:top-3 sm:left-3 sm:px-2.5 sm:py-1.5 sm:text-[10px]">
           <p className="mb-1 font-semibold">Score des blancs (Lichess)</p>
           <div className="flex items-center gap-1.5">
             <span>Noirs</span>

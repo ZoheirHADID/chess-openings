@@ -77,6 +77,7 @@ const checks: [string, () => string][] = [
           orientation="white"
           knownSans={new Set(selectedNode.children.map((c) => c.san))}
           onMove={() => {}}
+          hint={<p>bulle</p>}
         />,
       ),
   ],
@@ -90,6 +91,7 @@ const checks: [string, () => string][] = [
           openingName="Sicilian Defense"
           eco="B27"
           outOfBook={false}
+          compact
         />,
       ),
   ],

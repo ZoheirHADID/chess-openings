@@ -26,7 +26,9 @@ les résultats réels, et analyse **Stockfish** dès que la partie sort de la th
 - Recherche instantanée par nom d'ouverture, famille ou code ECO — la sélection déplie et centre la branche.
 
 ### Pourquoi ce coup ?
-- Onglet **Idées** : commentaire théorique rédigé pour les lignes principales (une centaine de coups des
+- Une **pastille « i » minuscule et discrète** se pose sur la case où la dernière pièce s'est arrêtée.
+  Au **survol** (ou d'une touche sur mobile), une bulle donne l'idée du coup sans quitter l'échiquier.
+- Commentaire théorique rédigé pour les lignes principales (une centaine de coups des
   grandes ouvertures) et **plan directeur** de la famille (sicilienne, française, nimzo-indienne…).
 - Hors de ces lignes, une **analyse automatique de la position** repère les motifs classiques : occupation
   et contrôle du centre, développement, roque, fianchetto, prophylaxie (…a6 contre Bb5), clouages et
@@ -80,8 +82,12 @@ classique, Elo 1600+) : répartition des résultats et coups les plus joués, cl
 
 ### Responsive
 - **Bureau** : panneau latéral fixe (échiquier, liste de coups, onglets Étude / Parties / Lichess) et arbre plein cadre.
-- **Mobile / tablette** : arbre en plein écran avec navigation par pincement, barre d'onglets inférieure
-  (Arbre · Position · Étude · Parties), cibles tactiles ≥ 40 px.
+- **Mobile / tablette** : l'**échiquier reste affiché au-dessus de l'arbre** pendant toute la navigation
+  (avec barre d'évaluation, nom de l'ouverture, boutons de navigation et liste de coups), repliable d'une
+  touche pour passer l'arbre en plein écran. Il est également conservé dans la vue Étude.
+- Barre d'onglets inférieure (Arbre · Échiquier · Étude · Parties), cibles tactiles ≥ 44 px, zone sûre iOS
+  respectée, zoom initial de l'arbre adapté aux petits écrans, hauteur en `100dvh` pour ne pas être rogné
+  par la barre d'URL, et champs à 16 px pour éviter le zoom automatique d'iOS.
 - Navigation clavier : `←` remonte d'un coup, `→` descend dans la variante principale.
 - Échiquier tactile : les pièces se déplacent au doigt, les cases restent carrées à toute largeur.
 

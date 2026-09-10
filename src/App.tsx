@@ -20,7 +20,7 @@ import { buildBranchStatus, loadProgress, markExplored, saveProgress, setStatus 
 import { loadGames, mapGamesToTree, mergeGames, parsePgn, saveGames } from './lib/games'
 import type { ImportedGame, OpeningsData, ProgressMap, StudyStatus } from './lib/types'
 
-type PanelTab = 'ideas' | 'study' | 'games' | 'explorer'
+type PanelTab = 'study' | 'games' | 'explorer'
 type MobileView = 'tree' | 'board' | 'study' | 'games'
 
 const USER_KEY = 'chess-openings:usernames:v2'
@@ -66,12 +66,13 @@ export default function App() {
   const [colorMode, setColorMode] = useState<ColorMode>('study')
   const [visibleParents, setVisibleParents] = useState<string[]>([])
   const [orientation, setOrientation] = useState<'white' | 'black'>('white')
-  const [tab, setTab] = useState<PanelTab>('ideas')
+  const [tab, setTab] = useState<PanelTab>('study')
   const [mobileView, setMobileView] = useState<MobileView>('tree')
   const [usernames, setUsernames] = useState<Record<Platform, string>>(loadUsernames)
   const [activeGame, setActiveGame] = useState<ImportedGame | null>(null)
   const [engineOn, setEngineOn] = useState(() => localStorage.getItem('chess-openings:engine') === 'on')
   const [storageWarning, setStorageWarning] = useState(false)
+  const [miniBoardOpen, setMiniBoardOpen] = useState(true)
   const [dropping, setDropping] = useState(false)
   const isDesktop = useMediaQuery('(min-width: 1024px)')
   const dropDepth = useRef(0)
@@ -291,6 +292,17 @@ export default function App() {
     )
   }
 
+  /** Bulle revelee au survol de la pastille posee sur la derniere piece jouee. */
+  const moveHint = (
+    <ExplainPanel
+      explanation={explanation}
+      openingName={named?.name}
+      eco={named?.eco}
+      outOfBook={outOfBook}
+      compact
+    />
+  )
+
   const forwardMove = nextGameMove ?? (outOfBook ? null : (anchor.children[0]?.san ?? null))
 
   const boardBlock = (
@@ -298,7 +310,13 @@ export default function App() {
       <div className="flex gap-1.5" style={{ containerType: 'inline-size' }}>
         <EvalBar snapshot={engineSnapshot} orientation={orientation} enabled={engineOn} />
         <div className="min-w-0 flex-1">
-          <Chessboard position={position} orientation={orientation} knownSans={knownSans} onMove={playMove} />
+          <Chessboard
+            position={position}
+            orientation={orientation}
+            knownSans={knownSans}
+            onMove={playMove}
+            hint={moveHint}
+          />
         </div>
       </div>
 
@@ -346,14 +364,16 @@ export default function App() {
         </button>
       </div>
 
-      <div>
-        <p className="truncate text-sm font-semibold text-slate-100">{named?.name ?? 'Position initiale'}</p>
-        <p className="text-[11px] text-slate-500">
-          {named?.eco ? `${named.eco} · ` : ''}
-          {anchor.count > 1 ? `${anchor.count} variantes en aval` : 'Fin de branche théorique'}
-          {' · '}
-          {position.turn === 'w' ? 'trait aux blancs' : 'trait aux noirs'}
-        </p>
+      <div className="flex items-center gap-2">
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-semibold text-slate-100">{named?.name ?? 'Position initiale'}</p>
+          <p className="text-[11px] text-slate-500">
+            {named?.eco ? `${named.eco} · ` : ''}
+            {anchor.count > 1 ? `${anchor.count} variantes en aval` : 'Fin de branche théorique'}
+            {' · '}
+            {position.turn === 'w' ? 'trait aux blancs' : 'trait aux noirs'}
+          </p>
+        </div>
       </div>
 
       {outOfBook && (
@@ -445,16 +465,86 @@ export default function App() {
     />
   )
 
-  const explorerBlock = <ExplorerPanel uci={position.uci} knownSans={knownSans} onPlayMove={playMove} />
+  /**
+   * Version compacte affichee au-dessus de l'arbre sur mobile : l'echiquier
+   * reste visible pendant la navigation dans les branches.
+   */
+  const miniBoardBlock = (
+    <div className="flex gap-2 bg-slate-900/40 p-2">
+      <div className="flex w-[44%] max-w-[230px] shrink-0 gap-1" style={{ containerType: 'inline-size' }}>
+        <EvalBar snapshot={engineSnapshot} orientation={orientation} enabled={engineOn} />
+        <div className="min-w-0 flex-1">
+          <Chessboard
+            position={position}
+            orientation={orientation}
+            knownSans={knownSans}
+            onMove={playMove}
+            hint={moveHint}
+          />
+        </div>
+      </div>
 
-  const ideasBlock = (
-    <ExplainPanel
-      explanation={explanation}
-      openingName={named?.name}
-      eco={named?.eco}
-      outOfBook={outOfBook}
-    />
+      <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+        <div className="flex items-center gap-1.5">
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-xs font-semibold text-slate-100">{named?.name ?? 'Position initiale'}</p>
+            <p className="truncate text-[10px] text-slate-500">
+              {named?.eco ? `${named.eco} · ` : ''}
+              {position.turn === 'w' ? 'trait aux blancs' : 'trait aux noirs'}
+              {anchor.count > 1 ? ` · ${anchor.count} variantes` : ''}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex gap-1">
+          {[
+            { label: '⏮', title: 'Position de départ', onClick: () => setLine([]), disabled: line.length === 0 },
+            {
+              label: '◀',
+              title: 'Reculer d’un coup',
+              onClick: () => setLine((prev) => prev.slice(0, -1)),
+              disabled: line.length === 0,
+            },
+            {
+              label: '▶',
+              title: nextGameMove ? 'Coup suivant de la partie' : 'Variante principale',
+              onClick: () => forwardMove && playMove(forwardMove),
+              disabled: !forwardMove,
+            },
+            {
+              label: '⇅',
+              title: 'Retourner l’échiquier',
+              onClick: () => setOrientation((o) => (o === 'white' ? 'black' : 'white')),
+              disabled: false,
+            },
+          ].map((button) => (
+            <button
+              key={button.label}
+              onClick={button.onClick}
+              disabled={button.disabled}
+              title={button.title}
+              className="min-h-9 flex-1 rounded-lg border border-slate-700 text-xs text-slate-300 active:bg-slate-800 disabled:opacity-30"
+            >
+              {button.label}
+            </button>
+          ))}
+        </div>
+
+        {outOfBook && (
+          <p className="rounded bg-amber-950/30 px-1.5 py-0.5 text-[10px] text-amber-300">
+            {freeLine.length} coup{freeLine.length > 1 ? 's' : ''} hors théorie
+            {engineOn && engineSnapshot?.lines[0] && ` · moteur : ${engineSnapshot.lines[0].sans[0]}`}
+          </p>
+        )}
+
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <MoveList sans={line} theoryPlies={matched} onGoTo={goToPly} />
+        </div>
+      </div>
+    </div>
   )
+
+  const explorerBlock = <ExplorerPanel uci={position.uci} knownSans={knownSans} onPlayMove={playMove} />
 
   const treeBlock = (
     <OpeningTree
@@ -477,7 +567,6 @@ export default function App() {
   )
 
   const tabs: { id: PanelTab; label: string }[] = [
-    { id: 'ideas', label: 'Idées' },
     { id: 'study', label: 'Étude' },
     { id: 'games', label: `Parties${games.length ? ` (${games.length})` : ''}` },
     { id: 'explorer', label: 'Lichess' },
@@ -494,24 +583,26 @@ export default function App() {
               {tree.data.openings.toLocaleString('fr-FR')} variantes · données Lichess
             </span>
           </div>
-          <div className="order-last w-full min-w-0 sm:order-none sm:w-auto sm:flex-1 lg:max-w-md">
+          <div className="min-w-0 flex-1 lg:max-w-md">
             <SearchBar data={tree.data} onSelect={selectPath} />
           </div>
           <div className="flex shrink-0 rounded-lg border border-slate-700 p-0.5">
             {(
               [
-                { id: 'all', label: 'Tout' },
-                { id: 'repertoire', label: 'Mon répertoire' },
+                { id: 'all', label: 'Tout', short: 'Tout' },
+                { id: 'repertoire', label: 'Mon répertoire', short: 'Rép.' },
               ] as const
             ).map((option) => (
               <button
                 key={option.id}
                 onClick={() => setFilter(option.id)}
-                className={`rounded-md px-2 py-1 text-xs font-medium whitespace-nowrap transition-colors ${
+                title={option.label}
+                className={`rounded-md px-1.5 py-1 text-[11px] font-medium whitespace-nowrap transition-colors sm:px-2 sm:text-xs ${
                   filter === option.id ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-slate-200'
                 }`}
               >
-                {option.label}
+                <span className="sm:hidden">{option.short}</span>
+                <span className="hidden sm:inline">{option.label}</span>
               </button>
             ))}
           </div>
@@ -521,18 +612,20 @@ export default function App() {
           >
             {(
               [
-                { id: 'study', label: 'Ma progression' },
-                { id: 'stats', label: 'Résultats' },
+                { id: 'study', label: 'Ma progression', short: 'Étude' },
+                { id: 'stats', label: 'Résultats', short: 'Résul.' },
               ] as const
             ).map((option) => (
               <button
                 key={option.id}
                 onClick={() => setColorMode(option.id)}
-                className={`rounded-md px-2 py-1 text-xs font-medium whitespace-nowrap transition-colors ${
+                title={option.label}
+                className={`rounded-md px-1.5 py-1 text-[11px] font-medium whitespace-nowrap transition-colors sm:px-2 sm:text-xs ${
                   colorMode === option.id ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-slate-200'
                 }`}
               >
-                {option.label}
+                <span className="sm:hidden">{option.short}</span>
+                <span className="hidden sm:inline">{option.label}</span>
               </button>
             ))}
           </div>
@@ -560,7 +653,6 @@ export default function App() {
                 ))}
               </div>
               <div className="pt-3">
-                {tab === 'ideas' && ideasBlock}
                 {tab === 'study' && studyBlock}
                 {tab === 'games' && gamesBlock}
                 {tab === 'explorer' && explorerBlock}
@@ -570,22 +662,39 @@ export default function App() {
           </>
         ) : (
           <section className="min-h-0 flex-1">
-            <div className={mobileView === 'tree' ? 'h-full' : 'hidden'}>{treeBlock}</div>
+            <div className={mobileView === 'tree' ? 'flex h-full flex-col' : 'hidden'}>
+              {miniBoardOpen && <div className="shrink-0">{miniBoardBlock}</div>}
+              <button
+                onClick={() => setMiniBoardOpen((open) => !open)}
+                className="flex shrink-0 items-center justify-center gap-1.5 border-y border-slate-800 bg-slate-900/60 py-1 text-[10px] font-medium text-slate-400"
+                aria-expanded={miniBoardOpen}
+              >
+                {miniBoardOpen ? '▲ Masquer l’échiquier' : '▼ Afficher l’échiquier'}
+              </button>
+              <div className="min-h-0 flex-1">{treeBlock}</div>
+            </div>
             {mobileView === 'board' && (
               <div className="h-full space-y-4 overflow-y-auto p-3 pb-20">
                 {boardBlock}
-                {ideasBlock}
                 {explorerBlock}
               </div>
             )}
-            {mobileView === 'study' && <div className="h-full overflow-y-auto p-3 pb-20">{studyBlock}</div>}
+            {mobileView === 'study' && (
+              <div className="flex h-full flex-col">
+                <div className="shrink-0 border-b border-slate-800">{miniBoardBlock}</div>
+                <div className="min-h-0 flex-1 overflow-y-auto p-3 pb-20">{studyBlock}</div>
+              </div>
+            )}
             {mobileView === 'games' && <div className="h-full overflow-y-auto p-3 pb-20">{gamesBlock}</div>}
           </section>
         )}
       </main>
 
       {!isDesktop && (
-        <nav className="z-20 shrink-0 border-t border-slate-800 bg-slate-900/95 backdrop-blur">
+        <nav
+          className="z-20 shrink-0 border-t border-slate-800 bg-slate-900/95 backdrop-blur"
+          style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+        >
           <div className="grid grid-cols-4">
             {(
               [
@@ -598,7 +707,7 @@ export default function App() {
               <button
                 key={item.id}
                 onClick={() => setMobileView(item.id)}
-                className={`flex flex-col items-center gap-0.5 py-2 text-[10px] font-medium transition-colors ${
+                className={`flex min-h-12 flex-col items-center justify-center gap-0.5 py-1.5 text-[10px] font-medium transition-colors ${
                   mobileView === item.id ? 'text-blue-400' : 'text-slate-500'
                 }`}
               >

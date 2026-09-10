@@ -16,6 +16,15 @@ body,
   height: 100%;
 }
 
+/* Hauteur reelle du viewport mobile : la barre d'URL ne doit pas rogner l'interface */
+@supports (height: 100dvh) {
+  html,
+  body,
+  #root {
+    height: 100dvh;
+  }
+}
+
 body {
   margin: 0;
   background: #0b1120;
@@ -23,6 +32,22 @@ body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   overscroll-behavior: none;
+}
+
+/* Pas de delai de double-tap sur les commandes tactiles */
+button,
+select,
+a {
+  touch-action: manipulation;
+}
+
+/* Champs a 16px minimum : en dessous, iOS zoome au focus */
+@media (max-width: 1023px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
 }
 
 /* Barres de defilement discretes */
