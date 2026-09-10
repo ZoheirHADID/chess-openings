@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import type { PositionInfo } from '../lib/chess'
 import { Piece } from './pieces'
 
@@ -25,15 +26,78 @@ export default function Chessboard({ position, orientation, knownSans, onMove, h
   const [from, setFrom] = useState<string | null>(null)
   const [drag, setDrag] = useState<{ square: string; x: number; y: number; size: number } | null>(null)
   const [promotion, setPromotion] = useState<{ from: string; to: string } | null>(null)
-  const [hintOpen, setHintOpen] = useState(false)
+  /**
+   * La bulle est rendue dans <body> : les panneaux qui defilent ne peuvent donc
+   * pas la rogner. Sa position est calculee en coordonnees ecran.
+   */
+  const [hintBox, setHintBox] = useState<{ left: number; top?: number; bottom?: number; width: number } | null>(null)
+  const badgeRef = useRef<HTMLButtonElement>(null)
+  const bubbleRef = useRef<HTMLDivElement>(null)
+  const closeTimer = useRef<number | null>(null)
+
+  const placeHint = useCallback(() => {
+    const rect = badgeRef.current?.getBoundingClientRect()
+    if (!rect) return
+    const margin = 8
+    const width = Math.min(320, window.innerWidth - margin * 2)
+    // Aligne sur le bord droit de la pastille, sans jamais sortir de l'ecran
+    const left = Math.max(margin, Math.min(rect.right - width, window.innerWidth - width - margin))
+    // Au-dessus si la pastille est dans la moitie basse, en dessous sinon
+    const above = rect.top > window.innerHeight / 2
+    setHintBox({
+      left,
+      width,
+      ...(above ? { bottom: window.innerHeight - rect.top + 6 } : { top: rect.bottom + 6 }),
+    })
+  }, [])
+
+  const openHint = useCallback(() => {
+    if (closeTimer.current) {
+      window.clearTimeout(closeTimer.current)
+      closeTimer.current = null
+    }
+    placeHint()
+  }, [placeHint])
+
+  /** Petit delai : la souris doit pouvoir passer de la pastille a la bulle. */
+  const scheduleClose = useCallback(() => {
+    if (closeTimer.current) window.clearTimeout(closeTimer.current)
+    closeTimer.current = window.setTimeout(() => setHintBox(null), 220)
+  }, [])
 
   // Toute nouvelle position repart d'une selection vierge
   useEffect(() => {
     setFrom(null)
     setDrag(null)
     setPromotion(null)
-    setHintOpen(false)
+    setHintBox(null)
   }, [position.fen])
+
+  // La bulle suit la fenetre : on la referme plutot que de la laisser flotter
+  useEffect(() => {
+    if (!hintBox) return
+    const close = () => setHintBox(null)
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && close()
+    const onDown = (e: PointerEvent) => {
+      const target = e.target as Node
+      if (badgeRef.current?.contains(target) || bubbleRef.current?.contains(target)) return
+      close()
+    }
+    window.addEventListener('scroll', close, true)
+    window.addEventListener('resize', close)
+    document.addEventListener('keydown', onKey)
+    document.addEventListener('pointerdown', onDown, true)
+    return () => {
+      window.removeEventListener('scroll', close, true)
+      window.removeEventListener('resize', close)
+      document.removeEventListener('keydown', onKey)
+      document.removeEventListener('pointerdown', onDown, true)
+    }
+  }, [hintBox])
+
+  useEffect(() => () => {
+    if (closeTimer.current) window.clearTimeout(closeTimer.current)
+  }, [])
 
   const squareAt = (clientX: number, clientY: number): string | null => {
     const rect = gridRef.current?.getBoundingClientRect()
@@ -108,18 +172,13 @@ export default function Chessboard({ position, orientation, knownSans, onMove, h
 
   // Pastille d'information posee sur la case ou la derniere piece s'est arretee
   const hintSquare = position.lastMove?.to
-  let hintPos: { left: string; top: string; alignRight: boolean; alignBottom: boolean } | null = null
+  let hintPos: { left: string; top: string } | null = null
   if (hint && hintSquare) {
     const file = FILES.indexOf(hintSquare[0])
     const rank = Number(hintSquare[1]) - 1
     const col = orientation === 'white' ? file : 7 - file
     const row = orientation === 'white' ? 7 - rank : rank
-    hintPos = {
-      left: `${(col + 0.98) * 12.5}%`,
-      top: `${(row + 0.02) * 12.5}%`,
-      alignRight: col > 4,
-      alignBottom: row < 4,
-    }
+    hintPos = { left: `${(col + 0.98) * 12.5}%`, top: `${(row + 0.02) * 12.5}%` }
   }
 
   return (
@@ -212,48 +271,54 @@ export default function Chessboard({ position, orientation, knownSans, onMove, h
         <div
           className="absolute z-30"
           style={{ left: hintPos.left, top: hintPos.top, transform: 'translate(-100%, 0)' }}
-          onMouseEnter={() => setHintOpen(true)}
-          onMouseLeave={() => setHintOpen(false)}
+          onMouseEnter={openHint}
+          onMouseLeave={scheduleClose}
         >
           <button
+            ref={badgeRef}
             onClick={(e) => {
               e.stopPropagation()
-              setHintOpen((open) => !open)
+              if (hintBox) setHintBox(null)
+              else openHint()
             }}
             onPointerDown={(e) => e.stopPropagation()}
             aria-label="Pourquoi ce coup ?"
             title="Pourquoi ce coup ?"
             className="flex items-center justify-center rounded-full bg-slate-900/55 font-bold text-slate-100/90 ring-1 ring-slate-100/30 transition-opacity hover:bg-slate-900/90"
             style={{
-              width: 'clamp(9px, 3cqw, 17px)',
-              height: 'clamp(9px, 3cqw, 17px)',
-              fontSize: 'clamp(6px, 2cqw, 11px)',
+              width: 'clamp(10px, 3cqw, 17px)',
+              height: 'clamp(10px, 3cqw, 17px)',
+              fontSize: 'clamp(7px, 2cqw, 11px)',
               lineHeight: 1,
-              opacity: hintOpen ? 1 : 0.55,
+              opacity: hintBox ? 1 : 0.6,
             }}
           >
             i
           </button>
-
-          {hintOpen && (
-            <div
-              className="animate-fade-in absolute z-40 w-[min(76vw,290px)] rounded-lg border border-slate-700 bg-slate-900/95 p-2.5 text-left shadow-2xl shadow-black/70 backdrop-blur"
-              style={
-                hintPos.alignRight
-                  ? hintPos.alignBottom
-                    ? { right: 0, top: 'calc(100% + 6px)' }
-                    : { right: 0, bottom: 'calc(100% + 6px)' }
-                  : hintPos.alignBottom
-                    ? { left: 0, top: 'calc(100% + 6px)' }
-                    : { left: 0, bottom: 'calc(100% + 6px)' }
-              }
-              onPointerDown={(e) => e.stopPropagation()}
-            >
-              {hint}
-            </div>
-          )}
         </div>
       )}
+
+      {hintBox &&
+        createPortal(
+          <div
+            ref={bubbleRef}
+            className="animate-fade-in fixed z-[60] overflow-y-auto rounded-lg border border-slate-600 bg-slate-900/97 p-3 text-left shadow-2xl shadow-black/80 backdrop-blur"
+            style={{
+              left: hintBox.left,
+              top: hintBox.top,
+              bottom: hintBox.bottom,
+              width: hintBox.width,
+              maxHeight: 'min(60vh, 420px)',
+            }}
+            onMouseEnter={openHint}
+            onMouseLeave={scheduleClose}
+            onPointerDown={(e) => e.stopPropagation()}
+            role="tooltip"
+          >
+            {hint}
+          </div>,
+          document.body,
+        )}
 
       {drag && dragPiece && (
         <Piece

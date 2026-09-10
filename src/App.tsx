@@ -17,8 +17,8 @@ import { useMoveStats } from './lib/moveStats'
 import { explainMove } from './lib/explain'
 import { buildTree, followSans, nearestNamed, type TreeIndex } from './lib/tree'
 import { buildBranchStatus, loadProgress, markExplored, saveProgress, setStatus } from './lib/progress'
-import { loadGames, mapGamesToTree, mergeGames, parsePgn, saveGames } from './lib/games'
-import type { ImportedGame, OpeningsData, ProgressMap, StudyStatus } from './lib/types'
+import { inferColors, loadGames, mapGamesToTree, mergeGames, parsePgn, saveGames } from './lib/games'
+import type { ImportedGame, OpeningsData, ProgressMap, StudyStatus, TreeNode } from './lib/types'
 
 type PanelTab = 'study' | 'games' | 'explorer'
 type MobileView = 'tree' | 'board' | 'study' | 'games'
@@ -117,15 +117,11 @@ export default function App() {
     return sans
   }, [activeGame, line])
 
-  /** Greffe affichee dans l'arbre : la partie entiere si elle est chargee, sinon la ligne courante. */
-  const graft = useMemo(() => {
-    if (!root) return { anchorId: '', sans: [] as string[] }
-    if (gameLine) {
-      const result = followSans(root, gameLine)
-      return { anchorId: result.node.id, sans: gameLine.slice(result.matched) }
-    }
-    return { anchorId, sans: freeLine }
-  }, [root, gameLine, anchorId, freeLine])
+  /** Ligne libre en cours de saisie, a greffer en plus des parties jouees. */
+  const currentGraft = useMemo(() => {
+    if (freeLine.length === 0) return null
+    return { anchorId, sans: freeLine, ply: anchorId ? anchorId.split(' ').length : 0 }
+  }, [anchorId, freeLine])
   const selectedId = line.join(' ')
   const position = useMemo(() => positionFromSans(line), [line])
   const pathIds = useMemo(() => prefixesOf(line), [line])
@@ -135,9 +131,43 @@ export default function App() {
     [progress],
   )
   const mapping = useMemo(
-    () => (root ? mapGamesToTree(games, root) : { games: [], stats: new Map() }),
+    () => (root ? mapGamesToTree(inferColors(games), root) : { games: [], stats: new Map(), grafts: new Map() }),
     [games, root],
   )
+
+  /**
+   * Greffons affiches dans l'arbre : toutes les continuations reellement jouees
+   * dans les parties importees, plus la ligne libre en cours de saisie.
+   */
+  const treeGrafts = useMemo(() => {
+    const map = new Map(mapping.grafts)
+    if (!currentGraft) return map
+
+    let parentId = currentGraft.anchorId
+    let ply = currentGraft.ply
+    let parent: TreeNode | null = null
+    let siblings = [...(map.get(parentId) ?? [])]
+    map.set(parentId, siblings)
+
+    for (const san of currentGraft.sans) {
+      ply++
+      const id = parentId ? `${parentId} ${san}` : san
+      const existing = siblings.find((n) => n.san === san)
+      let node: TreeNode
+      if (existing) {
+        // On clone la branche traversee pour ne pas modifier le cache des parties
+        node = { ...existing, children: [...existing.children], parent }
+        siblings[siblings.indexOf(existing)] = node
+      } else {
+        node = { id, san, ply, count: 0, children: [], parent, virtual: true }
+        siblings.unshift(node)
+      }
+      parent = node
+      parentId = id
+      siblings = node.children
+    }
+    return map
+  }, [mapping.grafts, currentGraft])
   const named = anchor ? nearestNamed(anchor) : null
   /** Coups theoriques jouables depuis la position affichee. */
   const knownSans = useMemo(
@@ -555,8 +585,7 @@ export default function App() {
       branchStatus={branchStatus}
       ownStatus={ownStatus}
       gameStats={mapping.stats}
-      freeLine={graft.sans}
-      anchorId={graft.anchorId}
+      grafts={treeGrafts}
       filter={filter}
       colorMode={colorMode}
       moveStats={moveStats}

@@ -23,13 +23,13 @@ export default function ExplainPanel({ explanation, openingName, eco, outOfBook,
 
   // Bulle survolée : le coup, l'essentiel, et de quoi approfondir
   if (compact) {
-    const points = explanation.note ? explanation.points.slice(0, 1) : explanation.points.slice(0, 3)
+    const points = explanation.note ? explanation.points.slice(0, 2) : explanation.points.slice(0, 4)
     return (
       <div className="space-y-1.5">
-        <p className="flex items-baseline gap-1.5">
+        <p className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
           <span className="font-mono text-xs font-bold text-slate-100">{explanation.numbered}</span>
           {openingName && (
-            <span className="min-w-0 truncate text-[10px] text-slate-400">
+            <span className="text-[10px] text-slate-400">
               {eco && <span className="text-slate-500">{eco} </span>}
               {openingName}
             </span>
@@ -51,6 +51,13 @@ export default function ExplainPanel({ explanation, openingName, eco, outOfBook,
               </li>
             ))}
           </ul>
+        )}
+
+        {explanation.plan && (
+          <p className="text-[10px] leading-relaxed text-slate-400">
+            <span className="text-slate-500">Plan : </span>
+            {explanation.plan}
+          </p>
         )}
 
         {outOfBook && <p className="text-[10px] text-amber-400">Coup hors du répertoire Lichess.</p>}

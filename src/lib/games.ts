@@ -222,6 +222,45 @@ export interface GameMapping {
   games: ImportedGame[]
   /** Statistiques cumulees par noeud (toutes les parties qui traversent le noeud). */
   stats: Map<string, GameNodeStats>
+  /**
+   * Coups reellement joues au-dela de la theorie, sous forme de sous-arbres
+   * greffes sur le noeud theorique ou la partie a quitte le repertoire.
+   */
+  grafts: Map<string, TreeNode[]>
+}
+
+/**
+ * Deduit la couleur jouee quand le pseudo n'a pas ete reconnu a l'import :
+ * le joueur present dans le plus grand nombre de parties est l'utilisateur.
+ */
+export function inferColors(games: ImportedGame[]): ImportedGame[] {
+  const missing = games.filter((g) => !g.color)
+  if (missing.length === 0) return games
+
+  const counts = new Map<string, number>()
+  for (const game of games) {
+    for (const name of [game.white, game.black]) {
+      const key = name.toLowerCase()
+      counts.set(key, (counts.get(key) ?? 0) + 1)
+    }
+  }
+  let owner = ''
+  let best = 0
+  for (const [name, count] of counts) {
+    if (count > best) {
+      best = count
+      owner = name
+    }
+  }
+  // Il faut que ce joueur soit present dans une nette majorite des parties
+  if (!owner || best < games.length * 0.6) return games
+
+  return games.map((game) => {
+    if (game.color) return game
+    if (game.white.toLowerCase() === owner) return { ...game, color: 'white' as const }
+    if (game.black.toLowerCase() === owner) return { ...game, color: 'black' as const }
+    return game
+  })
 }
 
 function outcome(game: ImportedGame): 'win' | 'draw' | 'loss' | null {
@@ -231,6 +270,9 @@ function outcome(game: ImportedGame): 'win' | 'draw' | 'loss' | null {
   if (game.result === '0-1') return game.color === 'black' ? 'win' : 'loss'
   return null
 }
+
+/** Demi-coups conserves dans l'arbre au-dela de la theorie repertoriee. */
+const GRAFT_PLIES = 14
 
 /** Place chaque partie sur la branche theorique correspondante. */
 export function mapGamesToTree(games: ImportedGame[], root: TreeNode): GameMapping {
@@ -248,12 +290,39 @@ export function mapGamesToTree(games: ImportedGame[], root: TreeNode): GameMappi
     if (ending) entry.endingHere++
   }
 
+  /** Coups reellement joues au-dela de la theorie, greffes par noeud d'ancrage. */
+  const grafts = new Map<string, TreeNode[]>()
+  const graftIndex = new Map<string, TreeNode>()
+
   const mapped = games.map((game) => {
-    const { node } = followSans(root, game.sans)
+    const { node, matched } = followSans(root, game.sans)
     const named = nearestNamed(node)
     const res = outcome(game)
+    const extra = game.sans.slice(matched, matched + GRAFT_PLIES)
     const chain = pathTo(node)
-    chain.forEach((n, i) => bump(n.id, res, i === chain.length - 1))
+    chain.forEach((n, i) => bump(n.id, res, i === chain.length - 1 && extra.length === 0))
+
+    // Prolongement hors theorie : un noeud virtuel par coup joue, fusionne entre parties
+    let parentId = node.id
+    let parentNode: TreeNode | null = null
+    let ply = node.ply
+    for (const [index, san] of extra.entries()) {
+      ply++
+      const id = parentId ? `${parentId} ${san}` : san
+      let child = graftIndex.get(id)
+      if (!child) {
+        child = { id, san, ply, count: 0, children: [], parent: parentNode, virtual: true }
+        graftIndex.set(id, child)
+        const siblings = grafts.get(parentId)
+        if (siblings) siblings.push(child)
+        else grafts.set(parentId, [child])
+      }
+      child.count++
+      bump(id, res, index === extra.length - 1)
+      parentId = id
+      parentNode = child
+    }
+
     return {
       ...game,
       nodeId: node.id,
@@ -262,5 +331,22 @@ export function mapGamesToTree(games: ImportedGame[], root: TreeNode): GameMappi
     }
   })
 
-  return { games: mapped, stats }
+  // Les enfants d'un noeud greffe sont ranges sous ce noeud ; il ne reste dans
+  // `grafts` que les continuations accrochees a un noeud theorique.
+  for (const [parentId, siblings] of [...grafts]) {
+    const parent = graftIndex.get(parentId)
+    if (parent) {
+      parent.children = siblings
+      grafts.delete(parentId)
+    }
+  }
+
+  // Les continuations les plus jouees en premier
+  const sortChildren = (nodes: TreeNode[]) => {
+    nodes.sort((a, b) => b.count - a.count || a.san.localeCompare(b.san))
+    for (const child of nodes) if (child.children.length > 0) sortChildren(child.children)
+  }
+  for (const [, siblings] of grafts) sortChildren(siblings)
+
+  return { games: mapped, stats, grafts }
 }

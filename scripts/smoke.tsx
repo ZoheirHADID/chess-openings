@@ -12,7 +12,7 @@ import StudyPanel from '../src/components/StudyPanel'
 import GamesPanel from '../src/components/GamesPanel'
 import { buildTree } from '../src/lib/tree'
 import { positionFromSans } from '../src/lib/chess'
-import { mapGamesToTree, parsePgn } from '../src/lib/games'
+import { inferColors, mapGamesToTree, parsePgn } from '../src/lib/games'
 import { buildBranchStatus, setStatus } from '../src/lib/progress'
 import { explainMove } from '../src/lib/explain'
 import ExplainPanel from '../src/components/ExplainPanel'
@@ -27,7 +27,15 @@ const PGN = `[Event "Rated Blitz"]
 [Black "rival"]
 [Result "0-1"]
 
-1. d4 Nf6 2. c4 e6 3. Nc3 Bb4 4. e3 O-O 0-1`
+1. a3 h6 2. h3 a6 3. Nf3 Nf6 4. Rg1 Rg8 5. Ra2 Ra7 0-1
+
+[Event "Rated Blitz"]
+[Site "https://lichess.org/xyz2"]
+[White "zoheir"]
+[Black "autre"]
+[Result "1-0"]
+
+1. a3 h6 2. h3 a6 3. Nf3 Nf6 4. Rg1 d5 5. d4 e6 1-0`
 
 const games = parsePgn(PGN, 'zoheir')
 const mapping = mapGamesToTree(games, tree.root)
@@ -36,13 +44,17 @@ let progress: ProgressMap = {}
 progress = setStatus(progress, 'd4 Nf6 c4 e6 Nc3 Bb4', 'mastered')
 progress = setStatus(progress, 'e4 c5 Nf3', 'studying')
 
+const selectedIdForGraft = 'e4 c5 Nf3'
 const selectedId = 'e4 c5 Nf3'
 const selectedNode = tree.byId.get(selectedId)!
 const sans = selectedId.split(' ')
 const position = positionFromSans(sans)
 const expanded = new Set(['', 'e4', 'e4 c5', 'e4 c5 Nf3'])
 // Ligne partiellement hors theorie : 1. e4 c5 2. Nf3 puis un coup libre
-const freeLine = ['Na3']
+const grafts = new Map(mapping.grafts)
+grafts.set(selectedIdForGraft, [
+  { id: `${selectedIdForGraft} Na3`, san: 'Na3', ply: 4, count: 1, children: [], parent: null, virtual: true },
+])
 
 const checks: [string, () => string][] = [
   [
@@ -57,8 +69,7 @@ const checks: [string, () => string][] = [
           branchStatus={buildBranchStatus(progress)}
           ownStatus={new Map(Object.entries(progress).map(([id, e]) => [id, e.status]))}
           gameStats={mapping.stats}
-          freeLine={freeLine}
-          anchorId={selectedId}
+          grafts={grafts}
           colorMode="study"
           moveStats={new Map()}
           onVisibleParents={() => {}}
@@ -171,6 +182,55 @@ if (!castleExp?.points.some((p) => p.includes('roque'))) {
   failed++
 }
 
+// Sans pseudo a l'import, la couleur jouee doit etre deduite (joueur majoritaire)
+const anonymous = parsePgn(PGN)
+if (anonymous.some((g) => g.color)) {
+  console.error('  ECHEC une couleur a ete attribuee sans pseudo')
+  failed++
+}
+const resolved = inferColors(anonymous)
+if (resolved.length !== 2 || resolved.some((g) => g.color !== 'white')) {
+  console.error('  ECHEC deduction de la couleur :', resolved.map((g) => g.color))
+  failed++
+} else {
+  console.log('  couleur deduite sans pseudo : blancs pour les 2 parties')
+}
+
+// Les continuations reellement jouees doivent etre greffees et fusionnees
+const first = mapping.games[0]
+const anchorId = first.nodeId ?? ''
+const anchorPlies = anchorId ? anchorId.split(' ').length : 0
+const firstFreeSan = first.sans[anchorPlies]
+const graftRoot = mapping.grafts.get(anchorId)
+const graftNode = graftRoot?.find((n) => n.san === firstFreeSan)
+console.log(`  theorie jusqu'a ${anchorPlies} demi-coups, puis ${firstFreeSan}`)
+if (!graftNode) {
+  console.error('  ECHEC aucune greffe pour le premier coup hors theorie')
+  failed++
+} else {
+  // Les deux parties partagent ce coup : le noeud doit etre mutualise
+  if (graftNode.count !== 2) {
+    console.error(`  ECHEC compteur du noeud greffe : ${graftNode.count} au lieu de 2`)
+    failed++
+  }
+  if (mapping.stats.get(graftNode.id)?.total !== 2) {
+    console.error('  ECHEC statistiques absentes sur un noeud hors theorie')
+    failed++
+  }
+  // Puis les parties divergent
+  let cursor = graftNode
+  let depth = 1
+  while (cursor.children.length === 1) {
+    cursor = cursor.children[0]
+    depth++
+  }
+  console.log(`  greffe : ${graftNode.san} x${graftNode.count}, divergence apres ${depth} coup(s) en ${cursor.children.map((c) => c.san).join(' / ')}`)
+  if (cursor.children.length !== 2) {
+    console.error('  ECHEC les deux continuations distinctes ne sont pas branchees ensemble')
+    failed++
+  }
+}
+
 // La branche libre doit apparaitre greffee sur l'arbre
 const treeHtml = checks[0][1]()
 for (const needle of ['Na3', 'hors th']) {
@@ -201,12 +261,12 @@ if (!knight || knight.san !== 'Nc6') {
 // Controles metier sur le placement des parties
 const played = mapping.games[0]
 console.log(`  partie placee sur : ${played.nodeId} -> ${played.openingEco} ${played.openingName}`)
-if (played.nodeId !== 'd4 Nf6 c4 e6 Nc3 Bb4 e3 O-O') {
+if (played.nodeId !== anchorId) {
   console.error('  ECHEC placement de la partie')
   failed++
 }
-if (mapping.stats.get('d4')?.losses !== 1) {
-  console.error('  ECHEC comptage du resultat (defaite attendue avec les noirs)')
+if (mapping.stats.get('a3')?.total !== 2 || mapping.stats.get('a3')?.wins !== 1) {
+  console.error('  ECHEC comptage des resultats :', mapping.stats.get('a3'))
   failed++
 }
 

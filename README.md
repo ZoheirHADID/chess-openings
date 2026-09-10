@@ -72,9 +72,17 @@ Un sélecteur en en-tête choisit ce que la couleur traduit :
 - Chaque partie est rejouée et placée sur la branche théorique la plus profonde qu'elle atteint ;
   l'ouverture est identifiée automatiquement (code ECO + nom).
 - Pastille violette sur les nœuds traversés par vos parties, bilan gains / nulles / défaites par branche.
-- **Rejouer une partie hors théorie** : l'ouvrir place le curseur là où la théorie s'arrête et greffe
-  toute la suite réellement jouée en pointillés ambre. `▶` avance coup par coup dans la partie, `⏭` va à
-  la fin, et le compteur indique la position dans la partie. Jusqu'à 160 demi-coups conservés par partie.
+- **Vos coups réellement joués apparaissent dans l'arbre**, même hors théorie : les continuations de
+  toutes les parties importées sont greffées en pointillés ambre sur le nœud où le répertoire s'arrête,
+  fusionnées entre elles (une branche commune, puis les divergences), jusqu'à 14 demi-coups. Elles sont
+  affichées **avant** les enfants théoriques pour rester visibles, et portent la pastille indiquant
+  **combien de fois vous avez joué cette branche**.
+- **Rejouer une partie hors théorie** : l'ouvrir place le curseur là où la théorie s'arrête, `▶` avance
+  coup par coup dans la partie, `⏭` va à la fin, et le compteur indique la position dans la partie.
+  Jusqu'à 160 demi-coups conservés par partie.
+- **L'échiquier se retourne automatiquement** dans le sens où vous avez joué. Si le pseudo n'a pas été
+  reconnu à l'import (PGN sans nom saisi), la couleur est déduite du joueur présent dans la majorité des
+  parties.
 
 ### Statistiques Lichess
 Pour la position courante, l'onglet *Lichess* interroge l'**Opening Explorer** (parties blitz / rapide /

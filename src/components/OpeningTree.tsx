@@ -30,10 +30,11 @@ interface Props {
   branchStatus: Map<string, StudyStatus>
   ownStatus: Map<string, StudyStatus>
   gameStats: Map<string, GameNodeStats>
-  /** Coups joues au-dela de l'arbre theorique, greffes sur anchorId. */
-  freeLine: string[]
-  /** Noeud theorique le plus profond atteint par la ligne courante. */
-  anchorId: string
+  /**
+    * Coups joues hors theorie, greffes par identifiant de noeud d'ancrage :
+    * continuations des parties importees et ligne libre en cours.
+    */
+  grafts: Map<string, TreeNode[]>
   filter: TreeFilter
   colorMode: ColorMode
   /** Bilan Lichess par coup, indexe par identifiant de noeud. */
@@ -67,8 +68,7 @@ export default function OpeningTree({
   branchStatus,
   ownStatus,
   gameStats,
-  freeLine,
-  anchorId,
+  grafts,
   filter,
   colorMode,
   moveStats,
@@ -110,49 +110,30 @@ export default function OpeningTree({
 
   // Construction de la hierarchie visible
   const layout = useMemo(() => {
-    /** Chaine de coups joues hors theorie, rendue en pointilles. */
-    const buildFree = (index: number, parentId: string, ply: number): Datum => {
-      const san = freeLine[index]
-      const id = parentId ? `${parentId} ${san}` : san
-      const node: TreeNode = {
-        id,
-        san,
-        ply,
-        count: 0,
-        children: [],
-        parent: null,
-        virtual: true,
-      }
-      return {
-        node,
-        hidden: 0,
-        children: index + 1 < freeLine.length ? [buildFree(index + 1, id, ply + 1)] : undefined,
-      }
-    }
-
     const build = (node: TreeNode): Datum => {
-      let children = node.children
-      if (filter === 'repertoire') children = children.filter(inRepertoire)
+      // Coups joues greffes sur ce noeud : ils s'ajoutent aux enfants theoriques
+      const played = grafts.get(node.id) ?? []
+      // Les coups reellement joues passent devant : ils ne doivent jamais etre
+      // repousses hors de la liste par les enfants theoriques.
+      let children = node.virtual ? node.children : [...played, ...node.children]
+      if (filter === 'repertoire') children = children.filter((child) => child.virtual || inRepertoire(child))
 
-      const isAnchor = node.id === anchorId && freeLine.length > 0
-      const isOpen = filter === 'repertoire' ? children.length > 0 || isAnchor : expanded.has(node.id)
-      if (!isOpen || (children.length === 0 && !isAnchor)) return { node, hidden: children.length }
+      const isOpen = filter === 'repertoire' ? children.length > 0 : expanded.has(node.id)
+      if (!isOpen || children.length === 0) return { node, hidden: children.length }
 
       const limit = showAll.has(node.id) ? children.length : DEFAULT_CHILDREN
       const shown = children.slice(0, limit)
-      const built = shown.map(build)
-      if (isAnchor) built.unshift(buildFree(0, node.id, node.ply + 1))
       return {
         node,
         hidden: children.length - shown.length,
-        children: built,
+        children: shown.map(build),
       }
     }
 
     const h = hierarchy(build(root), (d) => d.children)
     d3tree<Datum>().nodeSize([ROW, COL])(h)
     return h as HierarchyPointNode<Datum>
-  }, [root, expanded, filter, showAll, inRepertoire, freeLine, anchorId])
+  }, [root, expanded, filter, showAll, inRepertoire, grafts])
 
   const nodes = useMemo(() => layout.descendants(), [layout])
   const links = useMemo(() => layout.links(), [layout])
@@ -387,7 +368,7 @@ export default function OpeningTree({
                 >
                   {isRoot ? 'Départ' : node.san}
                 </text>
-                {node.virtual && node.ply === (anchorId ? anchorId.split(' ').length : 0) + 1 && (
+                {node.virtual && !node.parent && (
                   <text
                     x={10}
                     y={NODE_H + 13}
