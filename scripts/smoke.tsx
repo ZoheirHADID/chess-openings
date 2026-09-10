@@ -76,6 +76,7 @@ const checks: [string, () => string][] = [
           filter="all"
           onSelect={() => {}}
           onToggle={() => {}}
+          onOpenGames={() => {}}
         />,
       ),
   ],
@@ -89,6 +90,7 @@ const checks: [string, () => string][] = [
           knownSans={new Set(selectedNode.children.map((c) => c.san))}
           onMove={() => {}}
           hint={<p>bulle</p>}
+          bestMove="g1f3"
         />,
       ),
   ],
@@ -182,6 +184,31 @@ if (!castleExp?.points.some((p) => p.includes('roque'))) {
   failed++
 }
 
+// Les coups faibles doivent etre critiques, pas seulement decrits
+const critiques: [string[], string, (w: string[]) => boolean][] = [
+  [['d4', 'd5', 'Bf4', 'Bf5', 'Qd3'], 'dame en prise', (w) => w.some((x) => x.includes('gagner du matériel'))],
+  [['e4', 'e5', 'Qh5'], 'sortie precoce de la dame', (w) => w.some((x) => x.includes('Sortie précoce'))],
+  [['Na3'], 'cavalier au bord', (w) => w.some((x) => x.includes('Cavalier au bord'))],
+  [['e4', 'e5', 'Ke2'], 'droit de roque perdu', (w) => w.some((x) => x.includes('droit de roquer'))],
+  [['d4', 'd5', 'Bf4', 'Bf5', 'Qd3'], 'piece non defendue', (w) => w.some((x) => x.includes('défendu par rien'))],
+]
+for (const [moves, label, check] of critiques) {
+  const exp = explainMove(moves, positionFromSans(moves).lastMoveDetail)
+  const warnings = exp?.warnings ?? []
+  if (!check(warnings)) {
+    console.error(`  ECHEC critique « ${label} » sur ${moves.join(' ')} :`, warnings)
+    failed++
+  } else {
+    console.log(`  critique OK (${label}) : ${warnings[0]}`)
+  }
+}
+// Un bon coup de developpement ne doit pas etre critique a tort
+const solid = explainMove(['e4', 'e5', 'Nf3'], positionFromSans(['e4', 'e5', 'Nf3']).lastMoveDetail)
+if ((solid?.warnings.length ?? 0) > 0) {
+  console.error('  ECHEC 2. Nf3 critique a tort :', solid?.warnings)
+  failed++
+}
+
 // Sans pseudo a l'import, la couleur jouee doit etre deduite (joueur majoritaire)
 const anonymous = parsePgn(PGN)
 if (anonymous.some((g) => g.color)) {
@@ -240,10 +267,21 @@ for (const needle of ['Na3', 'hors th']) {
   }
 }
 
-// L'echiquier doit referencer les pieces du sprite
+// L'echiquier doit referencer les pieces du sprite et tracer le meilleur coup
 const boardHtml = checks[1][1]()
 if (!boardHtml.includes('#piece-wK')) {
   console.error('  ECHEC les pieces SVG ne sont pas rendues')
+  failed++
+}
+if (!boardHtml.includes('best-move-head')) {
+  console.error('  ECHEC fleche du meilleur coup absente')
+  failed++
+}
+
+// La pastille doit distinguer les parties jouees avec chaque couleur
+const whiteSide = mapping.stats.get('a3')
+if (!whiteSide || whiteSide.asWhite !== 2 || whiteSide.asBlack !== 0) {
+  console.error('  ECHEC repartition par couleur sur la branche :', whiteSide)
   failed++
 }
 

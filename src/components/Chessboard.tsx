@@ -19,9 +19,11 @@ interface Props {
   onMove: (san: string) => void
   /** Explication du dernier coup, revelee au survol de la pastille. */
   hint?: ReactNode
+  /** Coup recommande par le moteur, en notation UCI (« e2e4 »). */
+  bestMove?: string
 }
 
-export default function Chessboard({ position, orientation, knownSans, onMove, hint }: Props) {
+export default function Chessboard({ position, orientation, knownSans, onMove, hint, bestMove }: Props) {
   const gridRef = useRef<HTMLDivElement>(null)
   const [from, setFrom] = useState<string | null>(null)
   const [drag, setDrag] = useState<{ square: string; x: number; y: number; size: number } | null>(null)
@@ -170,6 +172,20 @@ export default function Chessboard({ position, orientation, knownSans, onMove, h
   const rows = orientation === 'white' ? position.board : [...position.board].reverse().map((r) => [...r].reverse())
   const dragPiece = drag ? pieceAt(drag.square) : null
 
+  /** Centre d'une case en unites de 0 a 8, selon l'orientation. */
+  const centerOf = (square: string) => {
+    const file = FILES.indexOf(square[0])
+    const rank = Number(square[1]) - 1
+    const col = orientation === 'white' ? file : 7 - file
+    const row = orientation === 'white' ? 7 - rank : rank
+    return { x: col + 0.5, y: row + 0.5 }
+  }
+
+  const arrow =
+    bestMove && bestMove.length >= 4 && !drag
+      ? { start: centerOf(bestMove.slice(0, 2)), end: centerOf(bestMove.slice(2, 4)) }
+      : null
+
   // Pastille d'information posee sur la case ou la derniere piece s'est arretee
   const hintSquare = position.lastMove?.to
   let hintPos: { left: string; top: string } | null = null
@@ -266,6 +282,32 @@ export default function Chessboard({ position, orientation, knownSans, onMove, h
           }),
         )}
       </div>
+
+      {arrow && (
+        <svg
+          viewBox="0 0 8 8"
+          className="pointer-events-none absolute inset-0 h-full w-full"
+          preserveAspectRatio="none"
+          aria-hidden="true"
+        >
+          <defs>
+            <marker id="best-move-head" markerWidth="3" markerHeight="3" refX="1.6" refY="1.5" orient="auto">
+              <path d="M0,0 L3,1.5 L0,3 z" fill="#22c55e" />
+            </marker>
+          </defs>
+          <line
+            x1={arrow.start.x}
+            y1={arrow.start.y}
+            x2={arrow.end.x}
+            y2={arrow.end.y}
+            stroke="#22c55e"
+            strokeWidth={0.14}
+            strokeLinecap="round"
+            markerEnd="url(#best-move-head)"
+            opacity={0.85}
+          />
+        </svg>
+      )}
 
       {hintPos && (
         <div

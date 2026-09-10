@@ -15,7 +15,10 @@ export interface MoveExplanation {
   numbered: string
   san: string
   note?: string
+  /** Ce que le coup apporte. */
   points: string[]
+  /** Ce qu'il concede : defauts reperes dans la position. */
+  warnings: string[]
   plan?: string
   wikibooks: string
 }
@@ -201,6 +204,108 @@ function analyse(move: DetailedMove): string[] {
   return points.slice(0, 4)
 }
 
+/**
+ * Defauts du coup reperes dans la position obtenue. Ces controles sont
+ * volontairement prudents : ils decrivent un fait verifiable (piece attaquee,
+ * capture disponible, droit de roque perdu) plutot qu'un jugement global, que
+ * seul le moteur peut porter.
+ */
+function findWeaknesses(move: DetailedMove, sans: string[]): string[] {
+  const warnings: string[] = []
+  const after = new Chess(move.after)
+  const own = move.color
+  const enemy: 'w' | 'b' = own === 'w' ? 'b' : 'w'
+  const ply = sans.length
+
+  // 1. La piece qui vient de jouer est-elle exposee ?
+  const attackers = after.attackers(move.to as never, enemy)
+  const defenders = after.attackers(move.to as never, own)
+  if (attackers.length > 0 && move.piece !== 'k') {
+    const cheapest = Math.min(...attackers.map((sq) => VALUES[after.get(sq as never)?.type ?? 'p']))
+    if (defenders.length === 0) {
+      warnings.push(`Le ${PIECE_NAMES[move.piece]} en ${move.to} est attaqué et n’est défendu par rien.`)
+    } else if (cheapest < VALUES[move.piece]) {
+      warnings.push(`Le ${PIECE_NAMES[move.piece]} en ${move.to} est attaqué par une pièce de moindre valeur.`)
+    }
+  }
+
+  // 2. Une capture avantageuse s'offre-t-elle a l'adversaire ?
+  let bestGain = 0
+  let bestTarget = ''
+  for (const reply of after.moves({ verbose: true })) {
+    if (!reply.captured) continue
+    const guarded = after.attackers(reply.to as never, own).length > 0
+    const gain = VALUES[reply.captured] - (guarded ? VALUES[reply.piece] : 0)
+    if (gain > bestGain) {
+      bestGain = gain
+      bestTarget = `${PIECE_NAMES[reply.captured]} en ${reply.to}`
+    }
+  }
+  if (bestGain >= 1 && bestTarget) {
+    warnings.push(`L’adversaire peut gagner du matériel en prenant le ${bestTarget}.`)
+  }
+
+  // 3. Sortie precoce de la dame
+  if (move.piece === 'q' && ply <= 12 && !move.captured) {
+    const home = own === 'w' ? 'd1' : 'd8'
+    if (move.from === home) {
+      warnings.push('Sortie précoce de la dame : elle sera chassée par le développement adverse, avec perte de temps.')
+    }
+  }
+
+  // 4. Pion pousse devant le roi deja roque
+  if (move.piece === 'p') {
+    const king = after.findPiece({ type: 'k', color: own })[0] as string | undefined
+    if (king) {
+      const kingFile = king.charCodeAt(0) - 97
+      const pawnFile = move.to.charCodeAt(0) - 97
+      const castled = own === 'w' ? king[1] === '1' : king[1] === '8'
+      const kingSide = kingFile >= 5 || kingFile <= 2
+      if (castled && kingSide && Math.abs(kingFile - pawnFile) <= 1 && !move.captured) {
+        warnings.push(`Ce pion s’avance devant le roi : l’abri en ${king} s’affaiblit.`)
+      }
+    }
+  }
+
+  // 5. Cavalier au bord
+  if (move.piece === 'n' && (move.to[0] === 'a' || move.to[0] === 'h')) {
+    warnings.push('Cavalier au bord : il ne contrôle plus que la moitié des cases.')
+  }
+
+  // 6. Droit de roque perdu
+  const rightsBefore = move.before.split(' ')[2] ?? '-'
+  const rightsAfter = move.after.split(' ')[2] ?? '-'
+  const mine = own === 'w' ? /[KQ]/g : /[kq]/g
+  const lost = (rightsBefore.match(mine)?.length ?? 0) - (rightsAfter.match(mine)?.length ?? 0)
+  if (lost > 0 && !move.flags.includes('k') && !move.flags.includes('q')) {
+    warnings.push('Ce coup fait perdre le droit de roquer de ce côté.')
+  }
+
+  // 7. Meme piece deplacee plusieurs fois pendant le developpement
+  if (ply <= 20 && !move.captured) {
+    const chess = new Chess()
+    const moves = new Map<string, number>()
+    for (const san of sans) {
+      try {
+        const played = chess.move(san)
+        const count = (moves.get(played.from) ?? 0) + 1
+        moves.delete(played.from)
+        moves.set(played.to, count)
+      } catch {
+        break
+      }
+    }
+    const times = moves.get(move.to) ?? 1
+    if (times >= 3) {
+      warnings.push(
+        `C’est le ${times}e déplacement de cette pièce : pendant ce temps, les autres restent à leur place.`,
+      )
+    }
+  }
+
+  return warnings.slice(0, 3)
+}
+
 /** Numerotation lisible : « 3. Bb5 » ou « 3...a6 ». */
 export function numberMove(ply: number, san: string): string {
   const moveNumber = Math.floor((ply - 1) / 2) + 1
@@ -220,6 +325,7 @@ export function explainMove(sans: string[], move: DetailedMove | undefined, fami
     san: move.san,
     note: MOVE_NOTES[path],
     points: analyse(move),
+    warnings: findWeaknesses(move, sans),
     plan: family ? FAMILY_PLANS[family] : undefined,
     wikibooks: wikibooksUrl(sans),
   }

@@ -10,7 +10,7 @@ import EvalBar from './components/EvalBar'
 import EnginePanel from './components/EnginePanel'
 import ExplainPanel from './components/ExplainPanel'
 import { PieceSprite } from './components/pieces'
-import { engine } from './lib/engine'
+import { engine, judgeMove } from './lib/engine'
 import { useEngine } from './lib/useEngine'
 import { positionFromSans } from './lib/chess'
 import { useMoveStats } from './lib/moveStats'
@@ -186,6 +186,29 @@ export default function App() {
   )
   /** Coup suivant de la partie chargee, s'il en reste. */
   const nextGameMove = gameLine && line.length < gameLine.length ? gameLine[line.length] : null
+  /** Meilleur coup du moteur pour la position affichee. */
+  const bestLine = engineSnapshot?.fen === position.fen ? engineSnapshot.lines[0] : undefined
+
+  /** Position precedente : le moteur l'evalue aussi, pour juger le coup joue. */
+  const parentFen = useMemo(
+    () => (line.length > 0 ? positionFromSans(line.slice(0, -1)).fen : null),
+    [line],
+  )
+  useEffect(() => {
+    if (engineOn && parentFen) void engine.requestEval(parentFen)
+  }, [engineOn, parentFen])
+
+  /** Jugement du coup joue : comparaison des evaluations avant / apres. */
+  const verdict = useMemo(() => {
+    if (!engineOn || !parentFen || line.length === 0) return null
+    return judgeMove(
+      engine.getEval(parentFen),
+      engine.getEval(position.fen),
+      line.length % 2 === 1 ? 'w' : 'b',
+      line[line.length - 1],
+    )
+    // engineSnapshot sert de signal : les evaluations arrivent au fil du calcul
+  }, [engineOn, parentFen, position.fen, line, engineSnapshot?.version])
 
   // La branche parcourue est memorisee et depliee automatiquement
   useEffect(() => {
@@ -330,6 +353,7 @@ export default function App() {
       eco={named?.eco}
       outOfBook={outOfBook}
       compact
+      verdict={verdict}
     />
   )
 
@@ -346,6 +370,7 @@ export default function App() {
             knownSans={knownSans}
             onMove={playMove}
             hint={moveHint}
+            bestMove={engineOn ? bestLine?.uci : undefined}
           />
         </div>
       </div>
@@ -386,11 +411,22 @@ export default function App() {
           </button>
         )}
         <button
+          onClick={() => setEngineOn((on) => !on)}
+          className={`ml-auto rounded-lg border px-2.5 py-1.5 text-xs transition-colors ${
+            engineOn
+              ? 'border-emerald-600 bg-emerald-600/20 text-emerald-300'
+              : 'border-slate-700 text-slate-300 hover:bg-slate-800'
+          }`}
+          title={engineOn ? 'Désactiver le moteur Stockfish' : 'Calculer le meilleur coup (Stockfish)'}
+        >
+          {engineOn ? (bestLine ? `⌾ ${bestLine.sans[0]}` : '⌾ …') : '⌾ Meilleur coup'}
+        </button>
+        <button
           onClick={() => setOrientation((o) => (o === 'white' ? 'black' : 'white'))}
-          className="ml-auto rounded-lg border border-slate-700 px-2.5 py-1.5 text-xs text-slate-300 hover:bg-slate-800"
+          className="rounded-lg border border-slate-700 px-2.5 py-1.5 text-xs text-slate-300 hover:bg-slate-800"
           title="Retourner l’échiquier"
         >
-          ⇅ Retourner
+          ⇅
         </button>
       </div>
 
@@ -480,8 +516,8 @@ export default function App() {
   const gamesBlock = (
     <GamesPanel
       games={mapping.games}
-      nodeId={anchorId}
-      nodeStats={mapping.stats.get(anchorId)}
+      nodeId={selectedId}
+      nodeStats={mapping.stats.get(selectedId)}
       usernames={usernames}
       onUsernameChange={(platform, value) => setUsernames((prev) => ({ ...prev, [platform]: value }))}
       onImport={importGames}
@@ -510,6 +546,7 @@ export default function App() {
             knownSans={knownSans}
             onMove={playMove}
             hint={moveHint}
+            bestMove={engineOn ? bestLine?.uci : undefined}
           />
         </div>
       </div>
@@ -545,6 +582,12 @@ export default function App() {
               label: '⇅',
               title: 'Retourner l’échiquier',
               onClick: () => setOrientation((o) => (o === 'white' ? 'black' : 'white')),
+              disabled: false,
+            },
+            {
+              label: engineOn ? (bestLine ? bestLine.sans[0] : '…') : '⌾',
+              title: engineOn ? 'Meilleur coup selon Stockfish' : 'Calculer le meilleur coup',
+              onClick: () => setEngineOn((on) => !on),
               disabled: false,
             },
           ].map((button) => (
@@ -592,6 +635,11 @@ export default function App() {
       onVisibleParents={handleVisibleParents}
       onSelect={(node) => selectPath(node.id)}
       onToggle={(node) => toggleNode(node.id)}
+      onOpenGames={(nodeId) => {
+        selectPath(nodeId)
+        setTab('games')
+        if (!isDesktop) setMobileView('games')
+      }}
     />
   )
 

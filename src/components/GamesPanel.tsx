@@ -31,6 +31,17 @@ interface Props {
   onClear: () => void
 }
 
+/** Identifiant court affichable : numero de partie Lichess / Chess.com. */
+const shortId = (game: ImportedGame): string => {
+  if (game.url) {
+    const last = game.url.split('/').filter(Boolean).pop()
+    if (last) return `#${last.slice(-10)}`
+  }
+  return `#${game.id.split('|').slice(-1)[0].slice(0, 8)}`
+}
+
+const COLOR_MARK: Record<'white' | 'black', string> = { white: '○', black: '●' }
+
 const resultBadge = (game: ImportedGame) => {
   if (game.result === '1/2-1/2') return { label: 'Nulle', color: 'bg-slate-600' }
   if (!game.color) return { label: game.result, color: 'bg-slate-700' }
@@ -58,10 +69,15 @@ export default function GamesPanel({
   const [scope, setScope] = useState<'branch' | 'all'>('branch')
   const fileRef = useRef<HTMLInputElement>(null)
 
-  const onBranch = useMemo(
-    () => games.filter((g) => g.nodeId === nodeId || (nodeId !== '' && g.nodeId?.startsWith(`${nodeId} `))),
-    [games, nodeId],
-  )
+  // Une partie appartient a la branche si ses coups commencent par ce chemin,
+  // que le noeud soit theorique ou greffe hors theorie.
+  const onBranch = useMemo(() => {
+    if (!nodeId) return games
+    return games.filter((g) => {
+      const path = g.sans.join(' ')
+      return path === nodeId || path.startsWith(`${nodeId} `)
+    })
+  }, [games, nodeId])
   const listed = scope === 'branch' ? onBranch : games
 
   const runImport = async (fn: () => Promise<ImportedGame[]> | ImportedGame[]) => {
@@ -226,6 +242,12 @@ export default function GamesPanel({
           </div>
         </div>
 
+        {nodeId && scope === 'branch' && (
+          <p className="mb-1.5 truncate font-mono text-[10px] text-slate-500" title={nodeId}>
+            Branche suivie : {nodeId}
+          </p>
+        )}
+
         {listed.length === 0 ? (
           <p className="text-xs text-slate-500">
             {games.length === 0
@@ -246,8 +268,16 @@ export default function GamesPanel({
                       <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold text-white ${badge.color}`}>
                         {badge.label}
                       </span>
+                      {game.color && (
+                        <span
+                          className="shrink-0 text-[11px] leading-none text-slate-300"
+                          title={game.color === 'white' ? 'Vous jouiez les blancs' : 'Vous jouiez les noirs'}
+                        >
+                          {COLOR_MARK[game.color]} {game.color === 'white' ? 'Blancs' : 'Noirs'}
+                        </span>
+                      )}
                       <span className="truncate text-xs text-slate-200">
-                        {game.white} – {game.black}
+                        vs {game.color === 'white' ? game.black : game.white}
                       </span>
                       {game.date && <span className="ml-auto shrink-0 text-[10px] text-slate-500">{game.date}</span>}
                     </span>
@@ -256,7 +286,8 @@ export default function GamesPanel({
                         {game.openingEco && <span className="text-slate-500">{game.openingEco} </span>}
                         {game.openingName ?? 'Hors théorie répertoriée'}
                       </span>
-                      <span className="ml-auto shrink-0 text-[10px] text-slate-600">{SOURCE_LABEL[game.source]}</span>
+                      <span className="ml-auto shrink-0 font-mono text-[10px] text-slate-600">{shortId(game)}</span>
+                      <span className="shrink-0 text-[10px] text-slate-600">{SOURCE_LABEL[game.source]}</span>
                     </span>
                   </button>
                 </li>

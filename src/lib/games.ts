@@ -213,6 +213,9 @@ export interface GameNodeStats {
   wins: number
   draws: number
   losses: number
+  /** Parties jouees avec les blancs / avec les noirs sur cette branche. */
+  asWhite: number
+  asBlack: number
   /** Parties dont la branche s'arrete exactement sur ce noeud. */
   endingHere: number
 }
@@ -277,16 +280,18 @@ const GRAFT_PLIES = 14
 /** Place chaque partie sur la branche theorique correspondante. */
 export function mapGamesToTree(games: ImportedGame[], root: TreeNode): GameMapping {
   const stats = new Map<string, GameNodeStats>()
-  const bump = (id: string, res: ReturnType<typeof outcome>, ending: boolean) => {
+  const bump = (id: string, game: ImportedGame, res: ReturnType<typeof outcome>, ending: boolean) => {
     let entry = stats.get(id)
     if (!entry) {
-      entry = { total: 0, wins: 0, draws: 0, losses: 0, endingHere: 0 }
+      entry = { total: 0, wins: 0, draws: 0, losses: 0, asWhite: 0, asBlack: 0, endingHere: 0 }
       stats.set(id, entry)
     }
     entry.total++
     if (res === 'win') entry.wins++
     else if (res === 'draw') entry.draws++
     else if (res === 'loss') entry.losses++
+    if (game.color === 'white') entry.asWhite++
+    else if (game.color === 'black') entry.asBlack++
     if (ending) entry.endingHere++
   }
 
@@ -300,7 +305,7 @@ export function mapGamesToTree(games: ImportedGame[], root: TreeNode): GameMappi
     const res = outcome(game)
     const extra = game.sans.slice(matched, matched + GRAFT_PLIES)
     const chain = pathTo(node)
-    chain.forEach((n, i) => bump(n.id, res, i === chain.length - 1 && extra.length === 0))
+    chain.forEach((n, i) => bump(n.id, game, res, i === chain.length - 1 && extra.length === 0))
 
     // Prolongement hors theorie : un noeud virtuel par coup joue, fusionne entre parties
     let parentId = node.id
@@ -318,7 +323,7 @@ export function mapGamesToTree(games: ImportedGame[], root: TreeNode): GameMappi
         else grafts.set(parentId, [child])
       }
       child.count++
-      bump(id, res, index === extra.length - 1)
+      bump(id, game, res, index === extra.length - 1)
       parentId = id
       parentNode = child
     }

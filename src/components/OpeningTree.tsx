@@ -43,6 +43,8 @@ interface Props {
   onVisibleParents: (ids: string[]) => void
   onSelect: (node: TreeNode) => void
   onToggle: (node: TreeNode) => void
+  /** Demande l'affichage des parties qui passent par ce noeud. */
+  onOpenGames: (nodeId: string) => void
 }
 
 interface Transform {
@@ -75,6 +77,7 @@ export default function OpeningTree({
   onVisibleParents,
   onSelect,
   onToggle,
+  onOpenGames,
 }: Props) {
   const svgRef = useRef<SVGSVGElement | null>(null)
   const [size, setSize] = useState({ width: 800, height: 600 })
@@ -430,14 +433,65 @@ export default function OpeningTree({
                     {node.eco}
                   </text>
                 ) : null}
-                {games && (
-                  <g transform={`translate(${w - 8}, 4)`} className="pointer-events-none">
-                    <circle r={8} fill="#7c3aed" />
-                    <text y={3.5} fontSize={9} textAnchor="middle" fill="#ffffff" fontWeight={700}>
-                      {games.total > 99 ? '99' : games.total}
-                    </text>
-                  </g>
-                )}
+                {games &&
+                  (() => {
+                    const both = games.asWhite > 0 && games.asBlack > 0
+                    const cap = (n: number) => (n > 99 ? '99+' : String(n))
+                    const only = games.asBlack > 0 && games.asWhite === 0 ? 'black' : 'white'
+                    return (
+                      <g
+                        transform={`translate(${w - 34}, -8)`}
+                        className="cursor-pointer"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onOpenGames(node.id)
+                        }}
+                      >
+                        <title>
+                          {`${games.total} partie(s) : ${games.asWhite} avec les blancs, ${games.asBlack} avec les noirs`}
+                        </title>
+                        {both ? (
+                          <>
+                            <rect width={34} height={16} rx={5} fill="#f1f5f9" stroke="#0f172a" strokeWidth={0.8} />
+                            <path
+                              d="M17 0 H29 A5 5 0 0 1 34 5 V11 A5 5 0 0 1 29 16 H17 Z"
+                              fill="#111827"
+                              stroke="#0f172a"
+                              strokeWidth={0.8}
+                            />
+                            <text x={8.5} y={11.5} fontSize={9} textAnchor="middle" fill="#0f172a" fontWeight={700}>
+                              {cap(games.asWhite)}
+                            </text>
+                            <text x={25.5} y={11.5} fontSize={9} textAnchor="middle" fill="#f8fafc" fontWeight={700}>
+                              {cap(games.asBlack)}
+                            </text>
+                          </>
+                        ) : (
+                          <>
+                            <rect
+                              x={9}
+                              width={25}
+                              height={16}
+                              rx={5}
+                              fill={only === 'white' ? '#f1f5f9' : '#111827'}
+                              stroke={only === 'white' ? '#0f172a' : '#64748b'}
+                              strokeWidth={0.8}
+                            />
+                            <text
+                              x={21.5}
+                              y={11.5}
+                              fontSize={9}
+                              textAnchor="middle"
+                              fill={only === 'white' ? '#0f172a' : '#f8fafc'}
+                              fontWeight={700}
+                            >
+                              {cap(games.total)}
+                            </text>
+                          </>
+                        )}
+                      </g>
+                    )
+                  })()}
                 {own && (
                   <circle cx={-1} cy={NODE_H / 2} r={4.5} fill={STATUS_COLOR[own]} className="pointer-events-none" />
                 )}
@@ -535,6 +589,7 @@ export default function OpeningTree({
             <span>Blancs</span>
           </div>
           <p className="mt-1 text-slate-500">Épaisseur = popularité · gris = peu de parties</p>
+          <p className="mt-1 text-slate-500">Pastille : vos parties, blancs à gauche, noirs à droite</p>
         </div>
       )}
 

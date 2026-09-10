@@ -1,4 +1,34 @@
 import type { MoveExplanation } from '../lib/explain'
+import type { MoveVerdict } from '../lib/engine'
+
+const VERDICT_STYLE: Record<MoveVerdict['quality'], { bg: string; text: string }> = {
+  best: { bg: 'bg-emerald-600/20 border-emerald-600/60', text: 'text-emerald-300' },
+  good: { bg: 'bg-emerald-600/10 border-emerald-700/50', text: 'text-emerald-300' },
+  inaccuracy: { bg: 'bg-amber-600/15 border-amber-600/60', text: 'text-amber-300' },
+  mistake: { bg: 'bg-orange-600/20 border-orange-600/60', text: 'text-orange-300' },
+  blunder: { bg: 'bg-rose-600/20 border-rose-600/60', text: 'text-rose-300' },
+}
+
+/** Bandeau de verdict du moteur, avec le coup qu'il aurait joue. */
+function Verdict({ verdict, compact }: { verdict: MoveVerdict; compact?: boolean }) {
+  const style = VERDICT_STYLE[verdict.quality]
+  const showBest = verdict.quality !== 'best' && verdict.best
+  return (
+    <p
+      className={`flex flex-wrap items-baseline gap-x-2 gap-y-0.5 rounded-md border px-2 py-1 ${style.bg} ${
+        compact ? 'text-[10px]' : 'text-[11px]'
+      }`}
+    >
+      <span className={`font-semibold ${style.text}`}>{verdict.label}</span>
+      {verdict.loss >= 20 && <span className="text-slate-400">−{(verdict.loss / 100).toFixed(1)} pion</span>}
+      {showBest && (
+        <span className="text-slate-400">
+          le moteur jouait <span className="font-mono text-slate-200">{verdict.best}</span>
+        </span>
+      )}
+    </p>
+  )
+}
 
 interface Props {
   explanation: MoveExplanation | null
@@ -8,10 +38,12 @@ interface Props {
   outOfBook: boolean
   /** Version resserrée, pour la bulle posée sur l'échiquier. */
   compact?: boolean
+  /** Jugement du moteur sur ce coup, quand il est activé. */
+  verdict?: MoveVerdict | null
 }
 
 /** « Pourquoi ce coup ? » — commentaire théorique et analyse de la position. */
-export default function ExplainPanel({ explanation, openingName, eco, outOfBook, compact }: Props) {
+export default function ExplainPanel({ explanation, openingName, eco, outOfBook, compact, verdict }: Props) {
   if (!explanation) {
     return (
       <p className="text-sm text-slate-400">
@@ -36,6 +68,8 @@ export default function ExplainPanel({ explanation, openingName, eco, outOfBook,
           )}
         </p>
 
+        {verdict && <Verdict verdict={verdict} compact />}
+
         {explanation.note && (
           <p className="border-l-2 border-emerald-600/70 pl-2 text-[11px] leading-relaxed text-slate-200">
             {explanation.note}
@@ -48,6 +82,17 @@ export default function ExplainPanel({ explanation, openingName, eco, outOfBook,
               <li key={point} className="flex gap-1.5 text-[11px] leading-snug text-slate-400">
                 <span className="mt-1.5 h-0.5 w-0.5 shrink-0 rounded-full bg-slate-500" />
                 {point}
+              </li>
+            ))}
+          </ul>
+        )}
+
+        {explanation.warnings.length > 0 && (
+          <ul className="space-y-0.5">
+            {explanation.warnings.map((warning) => (
+              <li key={warning} className="flex gap-1.5 text-[11px] leading-snug text-amber-300/90">
+                <span className="shrink-0">▲</span>
+                {warning}
               </li>
             ))}
           </ul>
@@ -86,6 +131,8 @@ export default function ExplainPanel({ explanation, openingName, eco, outOfBook,
         )}
       </p>
 
+      {verdict && <Verdict verdict={verdict} />}
+
       {explanation.note && (
         <section className="rounded-lg border border-emerald-800/50 bg-emerald-950/20 p-2.5">
           <p className="mb-1 text-[10px] font-semibold tracking-wide text-emerald-400 uppercase">Théorie</p>
@@ -96,13 +143,29 @@ export default function ExplainPanel({ explanation, openingName, eco, outOfBook,
       {explanation.points.length > 0 && (
         <section>
           <p className="mb-1 text-[10px] font-semibold tracking-wide text-slate-500 uppercase">
-            Analyse de la position
+            Ce que le coup apporte
           </p>
           <ul className="space-y-1">
             {explanation.points.map((point) => (
               <li key={point} className="flex gap-1.5 text-xs leading-relaxed text-slate-300">
                 <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-slate-500" />
                 {point}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {explanation.warnings.length > 0 && (
+        <section>
+          <p className="mb-1 text-[10px] font-semibold tracking-wide text-amber-500/80 uppercase">
+            Ce que le coup concède
+          </p>
+          <ul className="space-y-1">
+            {explanation.warnings.map((warning) => (
+              <li key={warning} className="flex gap-1.5 text-xs leading-relaxed text-amber-300/90">
+                <span className="shrink-0">▲</span>
+                {warning}
               </li>
             ))}
           </ul>
