@@ -127,6 +127,24 @@ async function main() {
     }
   }
 
+  // Continuations hors theorie les plus jouees (greffons de l'arbre)
+  const graftRows: { path: string; count: number; stats?: { wins: number; draws: number; losses: number } }[] = []
+  const walkGraft = (node: { id: string; san: string; count: number; children: unknown[] }) => {
+    graftRows.push({ path: node.id, count: node.count })
+    for (const child of node.children as typeof node[]) walkGraft(child)
+  }
+  for (const [, roots] of mapping.grafts) for (const root of roots) walkGraft(root as never)
+
+  const topGrafts = graftRows.sort((a, b) => b.count - a.count).slice(0, 10)
+  if (topGrafts.length > 0) {
+    console.log('\n=== Vos suites hors théorie les plus jouées ===')
+    for (const row of topGrafts) {
+      const stat = mapping.stats.get(row.path)
+      const score = stat ? pct(stat.wins + stat.draws / 2, stat.total) : '  -'
+      console.log(`  ${String(row.count).padStart(3)} fois  ${score} %  ${row.path.slice(0, 62)}`)
+    }
+  }
+
   const bytes = JSON.stringify(games).length
   console.log(`\nStockage navigateur estimé : ${(bytes / 1024 / 1024).toFixed(1)} Mo`)
   if (bytes > 4.5 * 1024 * 1024) {

@@ -67,6 +67,10 @@ Un sélecteur en en-tête choisit ce que la couleur traduit :
 - Le statut se propage visuellement : une branche repliée se colore selon la variante la plus avancée
   qu'elle contient.
 - Vue **« Mon répertoire »** : l'arbre ne montre plus que les branches travaillées ou jouées.
+- **Votre score contre la référence** : sur la branche affichée, l'onglet Étude compare votre pourcentage
+  de points à celui des parties Lichess pour le même coup, avec l'écart en points.
+- **« À travailler en priorité »** : les branches où vous marquez le moins (au moins 6 parties), les plus
+  précises d'abord, filtrables par couleur jouée et cliquables pour y aller directement.
 - Barre de progression, liste du répertoire, export JSON, réinitialisation. Tout est conservé en local
   (`localStorage`), sans compte ni serveur.
 
@@ -135,7 +139,8 @@ npm run preview
 | `npm run dev` | Serveur de développement Vite |
 | `npm run build` | Vérification TypeScript + build de production |
 | `npm run verify` | Contrôle la légalité des 8 652 coups de l'arbre et le placement d'une partie |
-| `npm run smoke` | Rend les composants hors navigateur pour détecter toute erreur de rendu |
+| `npm run smoke` | Rend les composants hors navigateur et vérifie les analyses (greffes, critiques, couleurs) |
+| `npm run account -- chesscom <pseudo> [n]` | Importe et analyse un compte en ligne de commande : ouvertures jouées, branches faibles, suites hors théorie |
 
 ## Données
 

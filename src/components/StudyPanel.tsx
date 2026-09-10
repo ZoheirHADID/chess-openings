@@ -2,6 +2,8 @@ import { useMemo } from 'react'
 import type { ProgressMap, StudyStatus, TreeNode } from '../lib/types'
 import { STATUS_COLOR, STATUS_LABEL, progressStats } from '../lib/progress'
 import { nearestNamed } from '../lib/tree'
+import type { GameNodeStats } from '../lib/games'
+import { totalOf, whiteScore, type MoveStat } from '../lib/moveStats'
 
 interface Props {
   node: TreeNode
@@ -12,6 +14,13 @@ interface Props {
   onSetStatus: (status: StudyStatus | null) => void
   onSelectNode: (id: string) => void
   onReset: () => void
+  /** Bilan personnel sur la branche affichee. */
+  ownStats?: GameNodeStats
+  /** Bilan de reference Lichess pour le meme coup. */
+  reference?: MoveStat
+  /** Camp qui vient de jouer le coup menant a cette position. */
+  moverIsWhite: boolean
+  children?: React.ReactNode
 }
 
 const ORDER: StudyStatus[] = ['explored', 'studying', 'mastered']
@@ -30,6 +39,10 @@ export default function StudyPanel({
   onSetStatus,
   onSelectNode,
   onReset,
+  ownStats,
+  reference,
+  moverIsWhite,
+  children,
 }: Props) {
   const current = progress[node.id]?.status
   const stats = useMemo(() => progressStats(progress), [progress])
@@ -66,8 +79,54 @@ export default function StudyPanel({
     URL.revokeObjectURL(url)
   }
 
+  // Score de reference du camp qui vient de jouer, pour comparer ce qui est comparable
+  const refScore = reference ? (moverIsWhite ? whiteScore(reference) : 1 - whiteScore(reference)) : null
+  const ownScore = ownStats && ownStats.total > 0 ? (ownStats.wins + ownStats.draws / 2) / ownStats.total : null
+
   return (
     <div className="space-y-4">
+      {(ownScore !== null || refScore !== null) && (
+        <section className="rounded-lg border border-slate-700/70 bg-slate-900/60 p-2.5">
+          <h3 className="mb-2 text-xs font-semibold tracking-wide text-slate-400 uppercase">
+            Votre score sur cette branche
+          </h3>
+          <div className="flex items-end gap-4">
+            <div>
+              <p className="text-lg leading-none font-bold text-slate-100">
+                {ownScore !== null ? `${Math.round(ownScore * 100)} %` : '—'}
+              </p>
+              <p className="text-[10px] text-slate-500">
+                {ownStats ? `vous, sur ${ownStats.total} partie(s)` : 'aucune de vos parties'}
+              </p>
+            </div>
+            <div>
+              <p className="text-lg leading-none font-bold text-slate-400">
+                {refScore !== null ? `${Math.round(refScore * 100)} %` : '—'}
+              </p>
+              <p className="text-[10px] text-slate-500">
+                {reference ? `référence Lichess (${totalOf(reference).toLocaleString('fr-FR')} parties)` : 'référence indisponible'}
+              </p>
+            </div>
+            {ownScore !== null && refScore !== null && (
+              <p
+                className={`ml-auto text-xs font-semibold ${
+                  ownScore >= refScore ? 'text-emerald-400' : 'text-rose-400'
+                }`}
+              >
+                {ownScore >= refScore ? '+' : '−'}
+                {Math.abs(Math.round((ownScore - refScore) * 100))} pts
+              </p>
+            )}
+          </div>
+          {ownStats && (
+            <p className="mt-1.5 text-[11px] text-slate-400">
+              {ownStats.wins} gain(s) · {ownStats.draws} nulle(s) · {ownStats.losses} défaite(s) ·{' '}
+              {ownStats.asWhite} avec les blancs, {ownStats.asBlack} avec les noirs
+            </p>
+          )}
+        </section>
+      )}
+
       <section>
         <h3 className="mb-2 text-xs font-semibold tracking-wide text-slate-400 uppercase">Où en suis-je ?</h3>
         <div className="grid grid-cols-3 gap-1.5">
@@ -173,6 +232,8 @@ export default function StudyPanel({
           </button>
         )}
       </section>
+
+      {children}
     </div>
   )
 }

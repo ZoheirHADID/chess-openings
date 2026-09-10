@@ -16,6 +16,7 @@ import { inferColors, mapGamesToTree, parsePgn } from '../src/lib/games'
 import { buildBranchStatus, setStatus } from '../src/lib/progress'
 import { explainMove } from '../src/lib/explain'
 import ExplainPanel from '../src/components/ExplainPanel'
+import WeakSpots from '../src/components/WeakSpots'
 import type { OpeningsData, ProgressMap } from '../src/lib/types'
 
 const data = JSON.parse(readFileSync('public/openings.json', 'utf8')) as OpeningsData
@@ -120,8 +121,15 @@ const checks: [string, () => string][] = [
           onSetStatus={() => {}}
           onSelectNode={() => {}}
           onReset={() => {}}
+          ownStats={mapping.stats.get('a3')}
+          reference={{ white: 5200, draws: 800, black: 4000 }}
+          moverIsWhite
         />,
       ),
+  ],
+  [
+    'WeakSpots',
+    () => renderToString(<WeakSpots stats={mapping.stats} byId={tree.byId} onSelect={() => {}} />),
   ],
   [
     'GamesPanel',

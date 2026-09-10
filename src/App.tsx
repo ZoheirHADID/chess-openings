@@ -9,6 +9,7 @@ import ExplorerPanel from './components/ExplorerPanel'
 import EvalBar from './components/EvalBar'
 import EnginePanel from './components/EnginePanel'
 import ExplainPanel from './components/ExplainPanel'
+import WeakSpots from './components/WeakSpots'
 import { PieceSprite } from './components/pieces'
 import { engine, judgeMove } from './lib/engine'
 import { useEngine } from './lib/useEngine'
@@ -175,7 +176,14 @@ export default function App() {
     [anchor, outOfBook],
   )
   const engineSnapshot = useEngine(position.fen, engineOn)
-  const moveStats = useMoveStats(visibleParents, colorMode === 'stats')
+  /** Positions dont on veut le bilan Lichess : tout l'ecran en mode Résultats,
+   *  sinon seulement la position precedant le coup affiche. */
+  const statsTargets = useMemo(() => {
+    if (colorMode === 'stats') return visibleParents
+    if (line.length === 0) return []
+    return [line.slice(0, -1).join(' ')]
+  }, [colorMode, visibleParents, line])
+  const moveStats = useMoveStats(statsTargets, colorMode === 'stats' || games.length > 0)
   const handleVisibleParents = useCallback((ids: string[]) => {
     setVisibleParents((prev) => (prev.length === ids.length && prev.every((v, i) => v === ids[i]) ? prev : ids))
   }, [])
@@ -510,7 +518,12 @@ export default function App() {
       onReset={() => {
         if (confirm('Effacer toute votre progression enregistrée ?')) setProgress({})
       }}
-    />
+      ownStats={mapping.stats.get(selectedId)}
+      reference={moveStats.get(selectedId)}
+      moverIsWhite={line.length % 2 === 1}
+    >
+      <WeakSpots stats={mapping.stats} byId={tree.byId} onSelect={selectPath} />
+    </StudyPanel>
   )
 
   const gamesBlock = (
