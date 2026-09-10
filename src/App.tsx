@@ -16,6 +16,7 @@ import { useEngine } from './lib/useEngine'
 import { positionFromSans } from './lib/chess'
 import { useMoveStats } from './lib/moveStats'
 import { explainMove } from './lib/explain'
+import { videoLinkFor } from './data/openingVideos'
 import { buildTree, followSans, nearestNamed, type TreeIndex } from './lib/tree'
 import { buildBranchStatus, loadProgress, markExplored, saveProgress, setStatus } from './lib/progress'
 import { inferColors, loadGames, mapGamesToTree, mergeGames, parsePgn, saveGames } from './lib/games'
@@ -201,6 +202,9 @@ export default function App() {
   )
   /** Coup suivant de la partie chargee, s'il en reste. */
   const nextGameMove = gameLine && line.length < gameLine.length ? gameLine[line.length] : null
+  /** Video francophone pour l'ouverture courante. */
+  const video = useMemo(() => videoLinkFor(named?.family, named?.name), [named])
+
   /** Meilleur coup du moteur pour la position affichee. */
   const bestLine = engineSnapshot?.fen === position.fen ? engineSnapshot.lines[0] : undefined
 
@@ -453,7 +457,20 @@ export default function App() {
 
       <div className="flex items-center gap-2">
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold text-slate-100">{named?.name ?? 'Position initiale'}</p>
+          {named && video ? (
+            <a
+              href={video.url}
+              target="_blank"
+              rel="noreferrer"
+              title={video.direct ? `Vidéo : ${video.label}` : video.label}
+              className="flex items-baseline gap-1.5 text-sm font-semibold text-slate-100 hover:text-blue-300"
+            >
+              <span className="truncate">{named.name}</span>
+              <span className={`shrink-0 text-[10px] ${video.direct ? 'text-rose-400' : 'text-slate-500'}`}>▶</span>
+            </a>
+          ) : (
+            <p className="truncate text-sm font-semibold text-slate-100">{named?.name ?? 'Position initiale'}</p>
+          )}
           <p className="text-[11px] text-slate-500">
             {named?.eco ? `${named.eco} · ` : ''}
             {anchor.count > 1 ? `${anchor.count} variantes en aval` : 'Fin de branche théorique'}
@@ -581,7 +598,20 @@ export default function App() {
       <div className="flex min-w-0 flex-1 flex-col gap-1.5">
         <div className="flex items-center gap-1.5">
           <div className="min-w-0 flex-1">
-            <p className="truncate text-xs font-semibold text-slate-100">{named?.name ?? 'Position initiale'}</p>
+            {named && video ? (
+              <a
+                href={video.url}
+                target="_blank"
+                rel="noreferrer"
+                title={video.direct ? `Vidéo : ${video.label}` : video.label}
+                className="flex items-baseline gap-1 text-xs font-semibold text-slate-100"
+              >
+                <span className="truncate">{named.name}</span>
+                <span className={`shrink-0 text-[9px] ${video.direct ? 'text-rose-400' : 'text-slate-500'}`}>▶</span>
+              </a>
+            ) : (
+              <p className="truncate text-xs font-semibold text-slate-100">{named?.name ?? 'Position initiale'}</p>
+            )}
             <p className="truncate text-[10px] text-slate-500">
               {named?.eco ? `${named.eco} · ` : ''}
               {position.turn === 'w' ? 'trait aux blancs' : 'trait aux noirs'}
