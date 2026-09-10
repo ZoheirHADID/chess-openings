@@ -1,5 +1,7 @@
 # Arbre des ouvertures d'échecs
 
+**Application en ligne : https://zoheirhadid.github.io/chess-openings/**
+
 Application web qui affiche les **3 810 ouvertures répertoriées par Lichess** sous forme d'arbre de
 branches interactif : échiquier jouable, suivi de progression (exploré / à l'étude / acquis), import de
 vos parties **Lichess et Chess.com**, explication théorique de chaque coup, coloration des branches selon
@@ -122,6 +124,12 @@ classique, Elo 1600+) : répartition des résultats et coups les plus joués, cl
   par la barre d'URL, et champs à 16 px pour éviter le zoom automatique d'iOS.
 - Navigation clavier : `←` remonte d'un coup, `→` descend dans la variante principale.
 - Échiquier tactile : les pièces se déplacent au doigt, les cases restent carrées à toute largeur.
+
+## Déploiement
+
+Le site est publié sur GitHub Pages par le workflow `.github/workflows/deploy.yml`, déclenché à chaque
+poussée sur `main` : installation, `npm run verify`, `npm run smoke`, build, mise en ligne. Le moteur
+Stockfish n'est pas versionné — le hook `prebuild` le copie depuis `node_modules` au moment du build.
 
 ## Démarrage
 
