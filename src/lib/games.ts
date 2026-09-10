@@ -333,6 +333,7 @@ export function mapGamesToTree(games: ImportedGame[], root: TreeNode): GameMappi
       nodeId: node.id,
       openingName: named?.name,
       openingEco: named?.eco,
+      openingId: named?.id,
     }
   })
 

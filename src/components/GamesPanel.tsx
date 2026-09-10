@@ -27,6 +27,8 @@ interface Props {
   usernames: Record<Platform, string>
   onUsernameChange: (platform: Platform, value: string) => void
   onImport: (games: ImportedGame[]) => void
+  /** Couleur a laquelle l'affichage est restreint. */
+  sideFilter: 'all' | 'white' | 'black'
   onSelectGame: (game: ImportedGame) => void
   onClear: () => void
 }
@@ -56,6 +58,7 @@ export default function GamesPanel({
   usernames,
   onUsernameChange,
   onImport,
+  sideFilter,
   onSelectGame,
   onClear,
 }: Props) {
@@ -241,6 +244,12 @@ export default function GamesPanel({
             </button>
           </div>
         </div>
+
+        {sideFilter !== 'all' && (
+          <p className="mb-1.5 text-[10px] text-blue-300">
+            Affichage restreint à vos parties avec les {sideFilter === 'white' ? 'blancs' : 'noirs'}.
+          </p>
+        )}
 
         {nodeId && scope === 'branch' && (
           <p className="mb-1.5 truncate font-mono text-[10px] text-slate-500" title={nodeId}>

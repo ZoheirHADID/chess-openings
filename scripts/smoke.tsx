@@ -129,7 +129,10 @@ const checks: [string, () => string][] = [
   ],
   [
     'WeakSpots',
-    () => renderToString(<WeakSpots stats={mapping.stats} byId={tree.byId} onSelect={() => {}} />),
+    () =>
+      renderToString(
+        <WeakSpots games={mapping.games} stats={mapping.stats} byId={tree.byId} onSelect={() => {}} />,
+      ),
   ],
   [
     'GamesPanel',
@@ -142,6 +145,7 @@ const checks: [string, () => string][] = [
           usernames={{ lichess: 'zoheir', chesscom: 'zoheir' }}
           onUsernameChange={() => {}}
           onImport={() => {}}
+          sideFilter="white"
           onSelectGame={() => {}}
           onClear={() => {}}
         />,

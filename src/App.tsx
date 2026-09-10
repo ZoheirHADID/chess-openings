@@ -65,6 +65,10 @@ export default function App() {
   const [games, setGames] = useState<ImportedGame[]>(() => loadGames())
   const [filter, setFilter] = useState<TreeFilter>('all')
   const [colorMode, setColorMode] = useState<ColorMode>('study')
+  /** Restreint tout l'affichage des parties a la couleur choisie. */
+  const [sideFilter, setSideFilter] = useState<'all' | 'white' | 'black'>(
+    () => (localStorage.getItem('chess-openings:side') as 'all' | 'white' | 'black' | null) ?? 'all',
+  )
   const [visibleParents, setVisibleParents] = useState<string[]>([])
   const [orientation, setOrientation] = useState<'white' | 'black'>('white')
   const [tab, setTab] = useState<PanelTab>('study')
@@ -92,6 +96,7 @@ export default function App() {
   useEffect(() => setStorageWarning(!saveGames(games)), [games])
   useEffect(() => localStorage.setItem(USER_KEY, JSON.stringify(usernames)), [usernames])
   useEffect(() => localStorage.setItem('chess-openings:engine', engineOn ? 'on' : 'off'), [engineOn])
+  useEffect(() => localStorage.setItem('chess-openings:side', sideFilter), [sideFilter])
 
   const root = tree?.root ?? null
 
@@ -131,10 +136,12 @@ export default function App() {
     () => new Map(Object.entries(progress).map(([id, entry]) => [id, entry.status])),
     [progress],
   )
-  const mapping = useMemo(
-    () => (root ? mapGamesToTree(inferColors(games), root) : { games: [], stats: new Map(), grafts: new Map() }),
-    [games, root],
-  )
+  const mapping = useMemo(() => {
+    if (!root) return { games: [], stats: new Map(), grafts: new Map() }
+    const resolved = inferColors(games)
+    const selected = sideFilter === 'all' ? resolved : resolved.filter((g) => g.color === sideFilter)
+    return mapGamesToTree(selected, root)
+  }, [games, root, sideFilter])
 
   /**
    * Greffons affiches dans l'arbre : toutes les continuations reellement jouees
@@ -246,6 +253,12 @@ export default function App() {
   }, [])
 
   const goToPly = useCallback((ply: number) => setLine((prev) => prev.slice(0, ply)), [])
+
+  /** Choisir une couleur oriente aussi l'echiquier de ce cote. */
+  const changeSide = useCallback((next: 'all' | 'white' | 'black') => {
+    setSideFilter(next)
+    if (next !== 'all') setOrientation(next)
+  }, [])
 
   const toggleNode = useCallback((id: string) => {
     setExpanded((prev) => {
@@ -522,7 +535,7 @@ export default function App() {
       reference={moveStats.get(selectedId)}
       moverIsWhite={line.length % 2 === 1}
     >
-      <WeakSpots stats={mapping.stats} byId={tree.byId} onSelect={selectPath} />
+      <WeakSpots games={mapping.games} stats={mapping.stats} byId={tree.byId} onSelect={selectPath} />
     </StudyPanel>
   )
 
@@ -534,6 +547,7 @@ export default function App() {
       usernames={usernames}
       onUsernameChange={(platform, value) => setUsernames((prev) => ({ ...prev, [platform]: value }))}
       onImport={importGames}
+      sideFilter={sideFilter}
       onSelectGame={openGame}
       onClear={() => {
         if (confirm('Supprimer les parties importées ?')) {
@@ -693,6 +707,29 @@ export default function App() {
               >
                 <span className="sm:hidden">{option.short}</span>
                 <span className="hidden sm:inline">{option.label}</span>
+              </button>
+            ))}
+          </div>
+          <div
+            className="flex shrink-0 rounded-lg border border-slate-700 p-0.5"
+            title="Ne montrer que les parties jouées avec cette couleur"
+          >
+            {(
+              [
+                { id: 'all', label: 'Les 2', title: 'Toutes vos parties' },
+                { id: 'white', label: '○', title: 'Uniquement vos parties avec les blancs' },
+                { id: 'black', label: '●', title: 'Uniquement vos parties avec les noirs' },
+              ] as const
+            ).map((option) => (
+              <button
+                key={option.id}
+                onClick={() => changeSide(option.id)}
+                title={option.title}
+                className={`rounded-md px-1.5 py-1 text-[11px] font-medium whitespace-nowrap transition-colors sm:px-2 sm:text-xs ${
+                  sideFilter === option.id ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                {option.label}
               </button>
             ))}
           </div>

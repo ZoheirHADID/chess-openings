@@ -73,4 +73,6 @@ export interface ImportedGame {
   /** Derniere ouverture nommee rencontree sur le chemin. */
   openingName?: string
   openingEco?: string
+  /** Noeud de cette ouverture nommee, pour y naviguer directement. */
+  openingId?: string
 }

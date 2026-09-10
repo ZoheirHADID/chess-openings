@@ -91,18 +91,23 @@ async function main() {
     )
   }
 
-  // Branches problematiques : au moins 8 parties, score le plus faible
+  // Ouvertures a travailler : celles qui coutent le plus de points
+  // (meme calcul que le panneau « A travailler en priorite » de l'application)
   const weak = rows
-    .filter((r) => r.total >= 8 && r.name !== 'Hors répertoire')
-    .map((r) => ({ ...r, score: (r.wins + r.draws / 2) / r.total }))
-    .sort((a, b) => a.score - b.score)
-    .slice(0, 8)
+    .filter((r) => r.total >= 5)
+    .map((r) => {
+      const score = (r.wins + r.draws / 2) / r.total
+      return { ...r, score, impact: r.total * Math.max(0, 0.5 - score) }
+    })
+    .sort((a, b) => b.impact - a.impact)
+    .slice(0, 12)
 
   if (weak.length > 0) {
-    console.log('\n=== À travailler en priorité (≥ 8 parties, score le plus bas) ===')
+    console.log('\n=== Ouvertures à travailler (classées par points perdus) ===')
+    console.log('  coût  score  parties  défaites  ouverture')
     for (const row of weak) {
       console.log(
-        `  ${pct(row.wins + row.draws / 2, row.total)} %  ${String(row.total).padStart(3)} parties  ${row.eco}  ${row.name.slice(0, 56)}`,
+        `  ${row.impact.toFixed(1).padStart(4)}  ${pct(row.wins + row.draws / 2, row.total)} %  ${String(row.total).padStart(7)}  ${String(row.losses).padStart(8)}  ${row.eco} ${row.name.slice(0, 46)}`,
       )
     }
   }
