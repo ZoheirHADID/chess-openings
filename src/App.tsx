@@ -14,7 +14,7 @@ import { PieceSprite } from './components/pieces'
 import { engine, judgeMove, QUALITY_BADGE } from './lib/engine'
 import { useEngine } from './lib/useEngine'
 import { positionFromSans } from './lib/chess'
-import { useMoveStats } from './lib/moveStats'
+import { totalOf, useMoveStats } from './lib/moveStats'
 import { explainMove } from './lib/explain'
 import { videoLinkFor } from './data/openingVideos'
 import { buildTree, followSans, nearestNamed, type TreeIndex } from './lib/tree'
@@ -185,13 +185,35 @@ export default function App() {
   )
   const engineSnapshot = useEngine(position.fen, engineOn)
   /** Positions dont on veut le bilan Lichess : tout l'ecran en mode Résultats,
-   *  sinon seulement la position precedant le coup affiche. */
+   *  sinon la position precedant le coup affiche et la position courante (pour
+   *  designer le coup suivant le plus joue). */
   const statsTargets = useMemo(() => {
     if (colorMode === 'stats') return visibleParents
-    if (line.length === 0) return []
-    return [line.slice(0, -1).join(' ')]
-  }, [colorMode, visibleParents, line])
-  const moveStats = useMoveStats(statsTargets, colorMode === 'stats' || games.length > 0)
+    const targets: string[] = []
+    if (line.length > 0) targets.push(line.slice(0, -1).join(' '))
+    if (!outOfBook) targets.push(anchorId)
+    return targets
+  }, [colorMode, visibleParents, line, outOfBook, anchorId])
+  const moveStats = useMoveStats(statsTargets, true)
+
+  /**
+   * Coup theorique suivant a mettre en avant : le plus joue d'apres le bilan
+   * Lichess, a defaut la variante principale (celle qui compte le plus de suites).
+   */
+  const recommendedId = useMemo(() => {
+    if (!anchor || outOfBook || anchor.children.length === 0) return null
+    let best: TreeNode | null = null
+    let bestTotal = 0
+    for (const child of anchor.children) {
+      const stat = moveStats.get(child.id)
+      const total = stat ? totalOf(stat) : 0
+      if (total > bestTotal) {
+        best = child
+        bestTotal = total
+      }
+    }
+    return (best ?? anchor.children[0]).id
+  }, [anchor, outOfBook, moveStats])
   const handleVisibleParents = useCallback((ids: string[]) => {
     setVisibleParents((prev) => (prev.length === ids.length && prev.every((v, i) => v === ids[i]) ? prev : ids))
   }, [])
@@ -704,6 +726,7 @@ export default function App() {
       root={root}
       expanded={expanded}
       selectedId={selectedId}
+      focusId={recommendedId}
       pathIds={pathIds}
       branchStatus={branchStatus}
       ownStatus={ownStatus}

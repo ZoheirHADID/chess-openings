@@ -26,6 +26,9 @@ les résultats réels, et analyse **Stockfish** dès que la partie sort de la th
   affichés sur chaque nœud nommé.
 - Pan / zoom à la souris, à la molette et au **pincement tactile**, boutons vue d'ensemble et recentrage.
 - Recherche instantanée par nom d'ouverture, famille ou code ECO — la sélection déplie et centre la branche.
+- À chaque sélection d'un chemin, la vue **zoome sur le coup suivant le plus joué** (bilan Lichess, à
+  défaut la variante principale), signalé par une étoile bleue. Si l'on a déplacé la vue entre-temps,
+  l'arrivée tardive des statistiques ne la recentre plus.
 
 ### Pourquoi ce coup ?
 - Une **pastille minuscule** se pose sur la case où la dernière pièce s'est arrêtée. Elle affiche la

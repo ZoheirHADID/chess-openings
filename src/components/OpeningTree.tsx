@@ -32,6 +32,8 @@ interface Props {
   root: TreeNode
   expanded: Set<string>
   selectedId: string
+  /** Coup suivant recommande (le plus joue) : la vue se centre dessus et il est etoile. */
+  focusId: string | null
   pathIds: Set<string>
   branchStatus: Map<string, StudyStatus>
   ownStatus: Map<string, StudyStatus>
@@ -72,6 +74,7 @@ export default function OpeningTree({
   root,
   expanded,
   selectedId,
+  focusId,
   pathIds,
   branchStatus,
   ownStatus,
@@ -188,12 +191,13 @@ export default function OpeningTree({
 
   // Recentrage sur la selection
   const centerOn = useCallback(
-    (id: string, zoom?: number) => {
+    (id: string, zoom?: number, zoomIn = false) => {
       const target = nodes.find((n) => n.data.node.id === id)
       if (!target || size.width === 0) return
       setAnimate(true)
       setTransform((t) => {
-        const k = zoom ?? t.k
+        // zoomIn : on rapproche la vue si elle etait en vue d'ensemble
+        const k = zoom ?? (zoomIn ? Math.max(t.k, 1) : t.k)
         return {
           k,
           x: size.width * (size.width < 700 ? 0.5 : 0.34) - target.y * k,
@@ -215,12 +219,24 @@ export default function OpeningTree({
     })
   }, [selectedId])
 
+  /**
+   * A chaque selection, la vue se centre sur le coup suivant recommande (des
+   * qu'il est affiche), sinon sur la selection. Si l'utilisateur a deplace la
+   * vue depuis, l'arrivee tardive du bilan Lichess ne la recentre plus.
+   */
   const lastCentered = useRef('')
+  const userMoved = useRef(false)
   useEffect(() => {
-    if (selectedId === lastCentered.current) return
-    lastCentered.current = selectedId
-    centerOn(selectedId)
-  }, [selectedId, centerOn])
+    const focusVisible = focusId !== null && nodes.some((n) => n.data.node.id === focusId)
+    const target = focusVisible ? focusId : selectedId
+    const key = `${selectedId}>${target}`
+    if (key === lastCentered.current) return
+    const selectionChanged = !lastCentered.current.startsWith(`${selectedId}>`)
+    lastCentered.current = key
+    if (selectionChanged) userMoved.current = false
+    else if (userMoved.current) return
+    centerOn(target, undefined, focusVisible)
+  }, [selectedId, focusId, nodes, centerOn])
 
   // Pan / zoom
   const onPointerDown = (e: React.PointerEvent<SVGSVGElement>) => {
@@ -244,6 +260,7 @@ export default function OpeningTree({
       const [a, b] = [...pointers.current.values()]
       const dist = Math.hypot(a.x - b.x, a.y - b.y)
       const k = Math.max(0.2, Math.min(2.4, (pinch.current.k * dist) / pinch.current.dist))
+      userMoved.current = true
       setTransform((t) => ({ ...t, k }))
       return
     }
@@ -252,6 +269,7 @@ export default function OpeningTree({
     const dx = e.clientX - state.x
     const dy = e.clientY - state.y
     if (Math.abs(dx) > 3 || Math.abs(dy) > 3) state.moved = true
+    if (state.moved) userMoved.current = true
     setTransform((t) => ({ ...t, x: state.tx + dx, y: state.ty + dy }))
   }
 
@@ -270,6 +288,7 @@ export default function OpeningTree({
     const px = e.clientX - rect.left
     const py = e.clientY - rect.top
     setAnimate(false)
+    userMoved.current = true
     setTransform((t) => {
       const k = Math.max(0.2, Math.min(2.4, t.k * (e.deltaY < 0 ? 1.12 : 1 / 1.12)))
       const ratio = k / t.k
@@ -283,11 +302,13 @@ export default function OpeningTree({
     const h = bounds.maxX - bounds.minX + ROW * 2
     const k = Math.max(0.2, Math.min(1.2, Math.min(size.width / w, size.height / h)))
     setAnimate(true)
+    userMoved.current = true
     setTransform({ k, x: 40, y: size.height / 2 - ((bounds.minX + bounds.maxX) / 2) * k })
   }
 
   const zoomBy = (factor: number) => {
     setAnimate(true)
+    userMoved.current = true
     setTransform((t) => {
       const k = Math.max(0.2, Math.min(2.4, t.k * factor))
       const ratio = k / t.k
@@ -364,6 +385,7 @@ export default function OpeningTree({
             const node = point.data.node
             const isRoot = node.id === ''
             const selected = node.id === selectedId
+            const focused = node.id === focusId && !selected
             const onPath = pathIds.has(node.id)
             const own = ownStatus.get(node.id)
             const branch = branchStatus.get(node.id)
@@ -384,19 +406,35 @@ export default function OpeningTree({
                   stroke={
                     selected
                       ? '#93c5fd'
-                      : node.virtual
-                        ? '#f59e0b'
-                        : own
-                          ? STATUS_COLOR[own]
-                          : branch
-                            ? STATUS_COLOR[branch]
-                            : '#334155'
+                      : focused
+                        ? '#38bdf8'
+                        : node.virtual
+                          ? '#f59e0b'
+                          : own
+                            ? STATUS_COLOR[own]
+                            : branch
+                              ? STATUS_COLOR[branch]
+                              : '#334155'
                   }
-                  strokeWidth={selected ? 2 : own || node.virtual ? 1.8 : 1}
-                  strokeOpacity={own || selected || node.virtual ? 1 : 0.7}
+                  strokeWidth={selected || focused ? 2 : own || node.virtual ? 1.8 : 1}
+                  strokeOpacity={own || selected || focused || node.virtual ? 1 : 0.7}
                   strokeDasharray={node.virtual ? '4 3' : undefined}
                   onClick={() => handleNodeClick(node)}
-                />
+                >
+                  {focused && <title>Coup suivant le plus joué</title>}
+                </rect>
+                {focused && colorMode !== 'stats' && (
+                  <text
+                    x={w - 32}
+                    y={NODE_H / 2 + 4}
+                    fontSize={11}
+                    textAnchor="end"
+                    fill="#38bdf8"
+                    className="pointer-events-none select-none"
+                  >
+                    ★
+                  </text>
+                )}
                 <text
                   x={10}
                   y={NODE_H / 2 + 4}
