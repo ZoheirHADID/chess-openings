@@ -25,7 +25,12 @@ les résultats réels, et analyse **Stockfish** dès que la partie sort de la th
 - Épaisseur des branches proportionnelle au nombre de variantes en aval ; code ECO et nom de variante
   affichés sur chaque nœud nommé.
 - Pan / zoom à la souris, à la molette et au **pincement tactile**, boutons vue d'ensemble et recentrage.
-- Recherche instantanée par nom d'ouverture, famille ou code ECO — la sélection déplie et centre la branche.
+- **Noms d'ouvertures en français** partout (arbre, échiquier, recherche, parties, étude) : les familles
+  courantes ont leur nom consacré (partie espagnole, défense est-indienne, gambit dame refusé…), les
+  variantes sont traduites avec accord (variante Najdorf, attaque anglaise, contre-gambit Falkbeer…). Une
+  icône sobre `en` à côté du nom donne l'anglais d'origine au survol et le bascule d'une touche.
+- Recherche instantanée par nom d'ouverture (français ou anglais), famille ou code ECO — la sélection déplie
+  et centre la branche.
 - À chaque sélection d'un chemin, la vue **zoome sur le coup suivant le plus joué** (bilan Lichess, à
   défaut la variante principale), signalé par une étoile bleue. Si l'on a déplacé la vue entre-temps,
   l'arrivée tardive des statistiques ne la recentre plus.
@@ -111,13 +116,14 @@ Un sélecteur en en-tête choisit ce que la couleur traduit :
 - **« À travailler en priorité »** : les ouvertures à apprendre pour améliorer statistiquement votre score,
   classées par **priorité** = coût (parties × écart sous 50 %) + récurrence de vos propres **écarts de
   théorie** (une demi-partie par écart) ; tris alternatifs par coût, défaites ou score, regroupement par
-  ouverture ou par branche, filtre par couleur. Un clic mène **directement à la position où votre écart
-  de théorie est le plus coûteux et le plus fréquent** dans cette ligne (coup joué, occurrences et coups
-  théoriques attendus affichés sur la ligne), à défaut au nœud de l'ouverture. Le bandeau résume la ligne
-  prioritaire et cet écart.
+  ouverture ou par branche, filtre par couleur. Un clic **rejoue directement sur l'échiquier le coup par
+  lequel vous quittez la théorie le plus cher et le plus souvent** dans cette ligne (coup joué, occurrences
+  et coups théoriques attendus affichés sur la ligne), avec son verdict et son explication ; `◀` ramène à la
+  position théorique, où l'arbre montre les coups attendus. À défaut d'écart, le clic mène au nœud de
+  l'ouverture. Le bandeau résume la ligne prioritaire et cet écart.
 - **« Erreurs récurrentes »** : les coups par lesquels vous quittez la théorie à répétition (position, coup
-  joué, coups théoriques attendus, nombre d'occurrences et score obtenu ensuite). Un clic ouvre la position
-  avec les coups attendus dépliés, d'où l'on peut lancer « Jouer la théorie » pour s'entraîner.
+  joué, coups théoriques attendus, nombre d'occurrences et score obtenu ensuite). Un clic rejoue le coup
+  fautif sur l'échiquier, d'où l'on peut revenir dans la théorie et lancer « Jouer la théorie ».
 - Barre de progression, liste du répertoire, export JSON, réinitialisation. Tout est conservé en local
   (`localStorage`), sans compte ni serveur.
 

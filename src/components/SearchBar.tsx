@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import OpeningName from './OpeningName'
 import type { OpeningsData } from '../lib/types'
 import { searchOpenings } from '../lib/tree'
 
@@ -69,7 +70,7 @@ export default function SearchBar({ data, onSelect }: Props) {
               >
                 <span className="w-9 shrink-0 font-mono text-[11px] text-blue-400">{hit.eco}</span>
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm text-slate-100">{hit.name}</span>
+                  <OpeningName name={hit.name} className="flex text-sm text-slate-100" />
                   <span className="block truncate font-mono text-[10px] text-slate-500">{hit.path}</span>
                 </span>
               </button>

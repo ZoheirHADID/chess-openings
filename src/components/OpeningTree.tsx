@@ -4,6 +4,7 @@ import type { StudyStatus, TreeNode } from '../lib/types'
 import type { GameNodeStats } from '../lib/games'
 import { STATUS_COLOR } from '../lib/progress'
 import { confidenceOf, scoreColor, totalOf, whiteScore, type MoveStat } from '../lib/moveStats'
+import { frName } from '../lib/frenchNames'
 
 const NODE_W = 172
 const NODE_H = 30
@@ -392,7 +393,14 @@ export default function OpeningTree({
             const games = gameStats.get(node.id)
             const hasChildren = node.children.length > 0
             const isOpen = point.data.children !== undefined
-            const label = node.variation ?? node.family ?? node.name
+            const rawLabel = node.variation ?? node.family ?? node.name
+            const label = rawLabel && !isRoot ? frName(rawLabel) : rawLabel
+            const tooltip = [
+              focused ? 'Coup suivant le plus joué' : null,
+              node.name && !isRoot ? `${frName(node.name)} — ${node.name}` : null,
+            ]
+              .filter(Boolean)
+              .join(' · ')
             const w = isRoot ? 128 : NODE_W
 
             return (
@@ -421,7 +429,7 @@ export default function OpeningTree({
                   strokeDasharray={node.virtual ? '4 3' : undefined}
                   onClick={() => handleNodeClick(node)}
                 >
-                  {focused && <title>Coup suivant le plus joué</title>}
+                  {tooltip && <title>{tooltip}</title>}
                 </rect>
                 {focused && colorMode !== 'stats' && (
                   <text

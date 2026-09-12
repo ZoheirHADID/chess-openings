@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
+import OpeningName from './OpeningName'
 import type { ImportedGame } from '../lib/types'
 import type { GameNodeStats } from '../lib/games'
 import { fetchChessComGames, fetchLichessGames, parsePgn } from '../lib/games'
@@ -331,9 +332,9 @@ export default function GamesPanel({
                       {game.date && <span className="ml-auto shrink-0 text-[10px] text-slate-500">{game.date}</span>}
                     </span>
                     <span className="mt-0.5 flex items-baseline gap-1.5 text-[11px] text-slate-400">
-                      <span className="truncate">
-                        {game.openingEco && <span className="text-slate-500">{game.openingEco} </span>}
-                        {game.openingName ?? 'Hors théorie répertoriée'}
+                      <span className="flex min-w-0 items-baseline gap-1">
+                        {game.openingEco && <span className="shrink-0 text-slate-500">{game.openingEco}</span>}
+                        {game.openingName ? <OpeningName name={game.openingName} /> : 'Hors théorie répertoriée'}
                       </span>
                       <span className="ml-auto shrink-0 font-mono text-[10px] text-slate-600">{shortId(game)}</span>
                       <span className="shrink-0 text-[10px] text-slate-600">{SOURCE_LABEL[game.source]}</span>

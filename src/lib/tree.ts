@@ -1,4 +1,5 @@
 import type { OpeningsData, RawNode, TreeNode } from './types'
+import { frName } from './frenchNames'
 
 export interface TreeIndex {
   root: TreeNode
@@ -99,12 +100,13 @@ export function searchOpenings(data: OpeningsData, query: string, limit = 40): S
   const hits: SearchHit[] = []
   for (const entry of data.index) {
     const name = normalize(entry.name)
+    const fr = normalize(frName(entry.name))
     const eco = entry.eco.toLowerCase()
     let score = -1
     if (eco === q) score = 0
-    else if (name.startsWith(q)) score = 1
-    else if (normalize(entry.family).startsWith(q)) score = 2
-    else if (name.includes(q)) score = 3
+    else if (name.startsWith(q) || fr.startsWith(q)) score = 1
+    else if (normalize(entry.family).startsWith(q) || normalize(frName(entry.family)).startsWith(q)) score = 2
+    else if (name.includes(q) || fr.includes(q)) score = 3
     else if (eco.startsWith(q)) score = 4
     if (score >= 0) hits.push({ ...entry, score })
   }

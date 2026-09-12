@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react'
 import type { ImportedGame, TreeNode } from '../lib/types'
 import type { GameNodeStats } from '../lib/games'
 import { nearestNamed } from '../lib/tree'
+import { frName } from '../lib/frenchNames'
+import OpeningName from './OpeningName'
 
 interface Props {
   /** Parties importees, deja rattachees a leur ouverture. */
@@ -182,7 +184,7 @@ export default function WeakSpots({ games, stats, byId, onSelect }: Props) {
         .map(finish)
         .map((row) => {
           const focus = costliest(allDeviations.filter((d) => d.opening === row.key))
-          return focus ? { ...row, focus, target: focus.nodeId } : row
+          return focus ? { ...row, focus, target: `${focus.nodeId} ${focus.san}`.trim() } : row
         })
     } else {
       // Regroupement par noeud : plus precis, mais uniquement sans filtre de couleur
@@ -217,7 +219,7 @@ export default function WeakSpots({ games, stats, byId, onSelect }: Props) {
             deviations: deviationCount,
           }),
           focus,
-          target: focus ? focus.nodeId : id,
+          target: focus ? `${focus.nodeId} ${focus.san}`.trim() : id,
         })
       }
       // On conserve la branche la plus profonde de chaque chemin equivalent
@@ -322,7 +324,7 @@ export default function WeakSpots({ games, stats, byId, onSelect }: Props) {
         <>
           {worst && worst.priority > 0.5 && (
             <p className="mb-2 rounded-lg border border-rose-800/50 bg-rose-950/25 px-2.5 py-1.5 text-[11px] text-rose-200">
-              Priorité : <strong>{worst.label}</strong> vous coûte {worst.impact.toFixed(1)} point
+              Priorité : <strong>{frName(worst.label)}</strong> vous coûte {worst.impact.toFixed(1)} point
               {worst.impact >= 2 ? 's' : ''} ({worst.losses} défaite{worst.losses > 1 ? 's' : ''} sur {worst.total}{' '}
               parties)
               {worst.deviations > 0 &&
@@ -331,7 +333,7 @@ export default function WeakSpots({ games, stats, byId, onSelect }: Props) {
               {worst.focus ? (
                 <>
                   {' '}
-                  Un clic vous place là où vous quittez la théorie le plus cher : vous jouez{' '}
+                  Un clic rejoue sur l’échiquier le coup qui vous coûte le plus cher : vous jouez{' '}
                   <strong>{worst.focus.san}</strong> ({worst.focus.count} fois, {worst.focus.losses} défaite
                   {worst.focus.losses > 1 ? 's' : ''})
                   {worst.focus.expected.length > 0 && ` au lieu de ${worst.focus.expected.join(', ')}`}.
@@ -340,7 +342,7 @@ export default function WeakSpots({ games, stats, byId, onSelect }: Props) {
                 topDeviation && (
                   <>
                     {' '}
-                    Erreur la plus fréquente : <strong>{topDeviation.san}</strong> après {topDeviation.opening} (
+                    Erreur la plus fréquente : <strong>{topDeviation.san}</strong> après {frName(topDeviation.opening)} (
                     {topDeviation.count} fois
                     {topDeviation.expected.length > 0 && `, la théorie joue ${topDeviation.expected.join(', ')}`}).
                   </>
@@ -359,7 +361,7 @@ export default function WeakSpots({ games, stats, byId, onSelect }: Props) {
                     disabled={!row.target}
                     title={
                       row.focus
-                        ? `Aller à la position où vous jouez ${row.focus.san} au lieu de la théorie`
+                        ? `Rejouer ${row.focus.san} sur l’échiquier, là où vous quittez la théorie`
                         : 'Aller à cette ouverture'
                     }
                     className="w-full rounded-lg border border-slate-700/70 bg-slate-900/50 px-2.5 py-1.5 text-left transition-colors hover:bg-slate-800 disabled:opacity-50"
@@ -374,9 +376,9 @@ export default function WeakSpots({ games, stats, byId, onSelect }: Props) {
                       >
                         {percent}%
                       </span>
-                      <span className="min-w-0 flex-1 truncate text-xs text-slate-200">
-                        {row.eco && <span className="text-slate-500">{row.eco} </span>}
-                        {row.label}
+                      <span className="flex min-w-0 flex-1 items-baseline gap-1 text-xs text-slate-200">
+                        {row.eco && <span className="shrink-0 text-slate-500">{row.eco}</span>}
+                        <OpeningName name={row.label} />
                       </span>
                       <span className="shrink-0 text-[11px] font-semibold text-rose-400">−{row.losses}</span>
                     </span>
@@ -418,8 +420,9 @@ export default function WeakSpots({ games, stats, byId, onSelect }: Props) {
         <div className="mt-4">
           <h3 className="mb-1.5 text-xs font-semibold tracking-wide text-slate-400 uppercase">Erreurs récurrentes</h3>
           <p className="mb-2 text-[10px] text-slate-500">
-            Coups par lesquels vous quittez la théorie à répétition. Un clic ouvre la position : les coups
-            théoriques attendus y sont dépliés.
+            Coups par lesquels vous quittez la théorie à répétition. Un clic rejoue le coup fautif sur
+            l’échiquier, avec son verdict ; les coups théoriques attendus sont dépliés dans l’arbre, et ◀
+            ramène à la position théorique.
           </p>
           <ul className="space-y-1">
             {deviations.slice(0, 8).map((dev) => {
@@ -427,16 +430,17 @@ export default function WeakSpots({ games, stats, byId, onSelect }: Props) {
               return (
                 <li key={dev.key}>
                   <button
-                    onClick={() => onSelect(dev.nodeId)}
+                    onClick={() => onSelect(`${dev.nodeId} ${dev.san}`.trim())}
+                    title={`Rejouer ${dev.san} sur l’échiquier`}
                     className="w-full rounded-lg border border-amber-800/50 bg-amber-950/15 px-2.5 py-1.5 text-left transition-colors hover:bg-amber-950/35"
                   >
                     <span className="flex items-center gap-2">
                       <span className="shrink-0 rounded bg-amber-900/60 px-1.5 py-0.5 font-mono text-[11px] font-bold text-amber-100">
                         {dev.san}
                       </span>
-                      <span className="min-w-0 flex-1 truncate text-xs text-slate-200">
-                        {dev.eco && <span className="text-slate-500">{dev.eco} </span>}
-                        {dev.opening}
+                      <span className="flex min-w-0 flex-1 items-baseline gap-1 text-xs text-slate-200">
+                        {dev.eco && <span className="shrink-0 text-slate-500">{dev.eco}</span>}
+                        <OpeningName name={dev.opening} />
                       </span>
                       <span className="shrink-0 text-[11px] font-semibold text-amber-300">×{dev.count}</span>
                     </span>

@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import OpeningName from './OpeningName'
 import type { ProgressMap, StudyStatus, TreeNode } from '../lib/types'
 import { STATUS_COLOR, STATUS_LABEL, progressStats } from '../lib/progress'
 import { nearestNamed } from '../lib/tree'
@@ -217,7 +218,7 @@ export default function StudyPanel({
                       className="h-2 w-2 shrink-0 rounded-full"
                       style={{ background: STATUS_COLOR[entry.status] }}
                     />
-                    <span className="min-w-0 truncate text-xs font-medium text-slate-200">{entry.label}</span>
+                    <OpeningName name={entry.label} className="min-w-0 text-xs font-medium text-slate-200" />
                     {entry.eco && <span className="ml-auto shrink-0 text-[10px] text-slate-500">{entry.eco}</span>}
                   </span>
                   <span className="mt-0.5 block truncate font-mono text-[10px] text-slate-500">{entry.moves}</span>

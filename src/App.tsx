@@ -11,6 +11,8 @@ import EnginePanel from './components/EnginePanel'
 import ExplainPanel from './components/ExplainPanel'
 import WeakSpots from './components/WeakSpots'
 import { PieceSprite } from './components/pieces'
+import OpeningName from './components/OpeningName'
+import { frName } from './lib/frenchNames'
 import { engine, judgeMove, QUALITY_BADGE } from './lib/engine'
 import { useEngine } from './lib/useEngine'
 import { positionFromSans } from './lib/chess'
@@ -674,7 +676,7 @@ export default function App() {
             {outOfBook
               ? `Hors théorie. Coups attendus : ${anchor.children.map((c) => c.san).join(', ')}.`
               : theoryEnded
-                ? `Fin de la théorie répertoriée : ${named?.name ?? 'ligne sans nom'}. Bravo, nouvelle partie ?`
+                ? `Fin de la théorie répertoriée : ${named ? frName(named.name) : 'ligne sans nom'}. Bravo, nouvelle partie ?`
                 : computerTurn
                   ? 'L’ordinateur choisit une variante…'
                   : `À vous : trouvez un coup théorique (${anchor.children.length} possible${anchor.children.length > 1 ? 's' : ''}).`}
@@ -739,11 +741,13 @@ export default function App() {
               title={video.direct ? `Vidéo : ${video.label}` : video.label}
               className="flex items-baseline gap-1.5 text-sm font-semibold text-slate-100 hover:text-blue-300"
             >
-              <span className="truncate">{named.name}</span>
+              <OpeningName name={named.name ?? ''} className="min-w-0" />
               <span className={`shrink-0 text-[10px] ${video.direct ? 'text-rose-400' : 'text-slate-500'}`}>▶</span>
             </a>
           ) : (
-            <p className="truncate text-sm font-semibold text-slate-100">{named?.name ?? 'Position initiale'}</p>
+            <p className="flex min-w-0 text-sm font-semibold text-slate-100">
+              {named?.name ? <OpeningName name={named.name} /> : 'Position initiale'}
+            </p>
           )}
           <p className="text-[11px] text-slate-500">
             {named?.eco ? `${named.eco} · ` : ''}
@@ -885,11 +889,13 @@ export default function App() {
                 title={video.direct ? `Vidéo : ${video.label}` : video.label}
                 className="flex items-baseline gap-1 text-xs font-semibold text-slate-100"
               >
-                <span className="truncate">{named.name}</span>
+                <OpeningName name={named.name ?? ''} className="min-w-0" />
                 <span className={`shrink-0 text-[9px] ${video.direct ? 'text-rose-400' : 'text-slate-500'}`}>▶</span>
               </a>
             ) : (
-              <p className="truncate text-xs font-semibold text-slate-100">{named?.name ?? 'Position initiale'}</p>
+              <p className="flex min-w-0 text-xs font-semibold text-slate-100">
+                {named?.name ? <OpeningName name={named.name} /> : 'Position initiale'}
+              </p>
             )}
             <p className="truncate text-[10px] text-slate-500">
               {named?.eco ? `${named.eco} · ` : ''}

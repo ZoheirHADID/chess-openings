@@ -3,6 +3,7 @@ import { QUALITY_BADGE, type MoveVerdict } from '../lib/engine'
 import QualityGlyph from './QualityGlyph'
 import type { FaultExplanation } from '../lib/refutation'
 import AiExplain from './AiExplain'
+import OpeningName from './OpeningName'
 
 const VERDICT_STYLE: Record<MoveVerdict['quality'], { bg: string; text: string }> = {
   brilliant: { bg: 'bg-teal-500/20 border-teal-500/60', text: 'text-teal-300' },
@@ -154,9 +155,9 @@ export default function ExplainPanel({
         <p className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
           <span className="font-mono text-xs font-bold text-slate-100">{explanation.numbered}</span>
           {openingName && (
-            <span className="text-[10px] text-slate-400">
-              {eco && <span className="text-slate-500">{eco} </span>}
-              {openingName}
+            <span className="inline-flex min-w-0 items-baseline gap-1 text-[10px] text-slate-400">
+              {eco && <span className="shrink-0 text-slate-500">{eco}</span>}
+              <OpeningName name={openingName} />
             </span>
           )}
         </p>
@@ -219,9 +220,9 @@ export default function ExplainPanel({
       <p className="flex items-baseline gap-2">
         <span className="font-mono text-base font-bold text-slate-100">{explanation.numbered}</span>
         {openingName && (
-          <span className="min-w-0 truncate text-xs text-slate-400">
-            {eco && <span className="text-slate-500">{eco} </span>}
-            {openingName}
+          <span className="inline-flex min-w-0 items-baseline gap-1 text-xs text-slate-400">
+            {eco && <span className="shrink-0 text-slate-500">{eco}</span>}
+            <OpeningName name={openingName} />
           </span>
         )}
       </p>
