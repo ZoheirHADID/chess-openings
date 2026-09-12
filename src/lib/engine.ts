@@ -381,6 +381,8 @@ export const QUALITY_LABEL: Record<MoveQuality, string> = {
 /** Pastille posee sur l'echiquier : glyphe et couleur, dans l'esprit de chess.com. */
 export interface QualityBadge {
   glyph: string
+  /** Icone vectorielle a la place du glyphe. */
+  icon?: 'book'
   color: string
   /** Texte sombre (fonds clairs). */
   dark?: boolean
@@ -393,7 +395,7 @@ export const QUALITY_BADGE: Record<MoveQuality, QualityBadge> = {
   best: { glyph: '★', color: '#81b64c', label: QUALITY_LABEL.best },
   excellent: { glyph: '!', color: '#96bc4b', label: QUALITY_LABEL.excellent },
   good: { glyph: '✓', color: '#96af8b', label: QUALITY_LABEL.good },
-  book: { glyph: '▤', color: '#a88865', label: QUALITY_LABEL.book },
+  book: { glyph: '', icon: 'book', color: '#a88865', label: QUALITY_LABEL.book },
   inaccuracy: { glyph: '?!', color: '#f7c631', dark: true, label: QUALITY_LABEL.inaccuracy },
   mistake: { glyph: '?', color: '#ffa459', dark: true, label: QUALITY_LABEL.mistake },
   miss: { glyph: '✗', color: '#ff7769', label: QUALITY_LABEL.miss },
@@ -435,6 +437,8 @@ function isSacrifice(fenBefore: string, san: string): boolean {
     return false
   }
 }
+
+const FAULTS = new Set<MoveQuality>(['inaccuracy', 'mistake', 'miss', 'blunder'])
 
 export interface JudgeContext {
   /** Position avant le coup, pour detecter un sacrifice. */
@@ -490,8 +494,8 @@ export function judgeMove(
   const hadWin = (before?.mate !== null && before?.mate !== undefined && scoreBefore > 0) || wpBefore >= 85
   if (hadWin && (quality === 'mistake' || quality === 'blunder') && wpAfter < 80) quality = 'miss'
 
-  // Coup de theorie correct (ni le meilleur, ni fautif) : pastille « livre »
-  if (context.inBook && (quality === 'excellent' || quality === 'good')) quality = 'book'
+  // Coup de theorie : pastille « livre » comme sur chess.com, sauf si le moteur y voit une faute
+  if (context.inBook && !FAULTS.has(quality)) quality = 'book'
 
   return {
     quality,

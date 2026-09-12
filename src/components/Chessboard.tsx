@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import type { PositionInfo } from '../lib/chess'
 import type { QualityBadge } from '../lib/engine'
 import { Piece } from './pieces'
+import QualityGlyph from './QualityGlyph'
 
 const FILES = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
 const PROMOTIONS = ['q', 'r', 'b', 'n'] as const
@@ -355,7 +356,7 @@ export default function Chessboard({ position, orientation, knownSans, onMove, h
                   }
             }
           >
-            {badge ? badge.glyph : 'i'}
+            {badge ? <QualityGlyph badge={badge} /> : 'i'}
           </button>
         </div>
       )}

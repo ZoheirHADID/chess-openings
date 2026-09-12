@@ -1,5 +1,6 @@
 import type { MoveExplanation } from '../lib/explain'
 import { QUALITY_BADGE, type MoveVerdict } from '../lib/engine'
+import QualityGlyph from './QualityGlyph'
 
 const VERDICT_STYLE: Record<MoveVerdict['quality'], { bg: string; text: string }> = {
   brilliant: { bg: 'bg-teal-500/20 border-teal-500/60', text: 'text-teal-300' },
@@ -14,7 +15,7 @@ const VERDICT_STYLE: Record<MoveVerdict['quality'], { bg: string; text: string }
   blunder: { bg: 'bg-rose-600/20 border-rose-600/60', text: 'text-rose-300' },
 }
 
-const NO_BEST_SHOWN = new Set<MoveVerdict['quality']>(['brilliant', 'great', 'best'])
+const NO_BEST_SHOWN = new Set<MoveVerdict['quality']>(['brilliant', 'great', 'best', 'book'])
 
 /** Bandeau de verdict du moteur, avec le coup qu'il aurait joue. */
 function Verdict({ verdict, compact }: { verdict: MoveVerdict; compact?: boolean }) {
@@ -32,7 +33,7 @@ function Verdict({ verdict, compact }: { verdict: MoveVerdict; compact?: boolean
         style={{ background: badge.color, color: badge.dark ? '#1f2937' : '#fff' }}
         aria-hidden
       >
-        {badge.glyph}
+        <QualityGlyph badge={badge} />
       </span>
       <span className={`font-semibold ${style.text}`}>{verdict.label}</span>
       {verdict.loss >= 20 && <span className="text-slate-400">−{(verdict.loss / 100).toFixed(1)} pion</span>}

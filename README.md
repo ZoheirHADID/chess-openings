@@ -28,17 +28,28 @@ les résultats réels, et analyse **Stockfish** dès que la partie sort de la th
 - Recherche instantanée par nom d'ouverture, famille ou code ECO — la sélection déplie et centre la branche.
 
 ### Pourquoi ce coup ?
-- Une **pastille « i » minuscule et discrète** se pose sur la case où la dernière pièce s'est arrêtée.
-  Au **survol** (ou d'une touche sur mobile), une bulle donne l'idée du coup sans quitter l'échiquier.
+- Une **pastille minuscule** se pose sur la case où la dernière pièce s'est arrêtée. Elle affiche la
+  **classification du coup** dès que le moteur a tranché (`!!` brillant, `!` excellent, `★` meilleur,
+  `✓` bon, `?!` imprécision, `?` erreur, `✗` occasion manquée, `??` gaffe). Un **livre marron** signale
+  un coup de théorie, comme sur chess.com : il prime sur les bonnes notes, seules les fautes relevées par
+  le moteur restent visibles. Sans verdict, la pastille se réduit à un simple « i ». Au **survol** (ou d'une touche sur mobile), une bulle donne l'idée du coup sans
+  quitter l'échiquier.
 - Commentaire théorique rédigé pour les lignes principales (une centaine de coups des
   grandes ouvertures) et **plan directeur** de la famille (sicilienne, française, nimzo-indienne…).
 - **Le coup est aussi critiqué**, pas seulement décrit. Deux niveaux :
   - *Ce que le coup concède* : pièce attaquée et non défendue, capture avantageuse laissée à
     l'adversaire, sortie précoce de la dame, pion avancé devant le roi roqué, cavalier au bord, droit de
     roque perdu, même pièce déplacée trois fois pendant le développement.
-  - *Verdict du moteur* (si Stockfish est activé) : **Meilleur coup / Bon coup / Imprécision / Erreur /
-    Gaffe**, avec la perte en pions et le coup que le moteur aurait joué. L'évaluation de la position
-    précédente est calculée en tâche de fond pour permettre cette comparaison.
+  - *Verdict du moteur* (si Stockfish est activé) : **Brillant / Excellent / Meilleur coup / Très bon /
+    Bon / Théorie / Imprécision / Erreur / Occasion manquée / Gaffe**, avec la perte en pions et le coup
+    que le moteur aurait joué. Le classement suit les critères de Lichess et chess.com : perte en
+    **pourcentage de victoire** (< 2 très bon, < 5 bon, < 10 imprécision, < 20 erreur, au-delà gaffe),
+    « brillant » pour un sacrifice sain qui est le meilleur coup, « excellent » pour le seul bon coup
+    (la seconde variante du moteur perd nettement plus), « occasion manquée » quand un gain net s'évapore,
+    « théorie » pour tout coup de l'arbre qui n'est pas une faute.
+    L'évaluation de la position précédente est calculée en tâche de fond pour permettre cette
+    comparaison, et le verdict n'est rendu qu'à partir d'une profondeur suffisante (10 demi-coups) pour ne
+    pas juger avant que le moteur ait vu la réfutation.
 - Hors de ces lignes, une **analyse automatique de la position** repère les motifs classiques : occupation
   et contrôle du centre, développement, roque, fianchetto, prophylaxie (…a6 contre Bb5), clouages et
   enfilades, pièces attaquées, gain d'espace.
