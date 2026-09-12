@@ -22,6 +22,8 @@ const THROTTLE_MS = 260
 const cache = new Map<string, MoveStat>()
 /** Positions deja interrogees (evite de redemander un noeud sans suite connue). */
 const resolved = new Set<string>()
+/** Le bilan de cette position a deja ete demande (avec ou sans resultat). */
+export const isResolved = (parentId: string) => resolved.has(parentId)
 let loaded = false
 
 function load() {

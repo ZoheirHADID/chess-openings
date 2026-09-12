@@ -41,6 +41,8 @@ export interface StoredEval {
   mate: number | null
   depth: number
   bestSan?: string
+  /** Premiers coups de la meilleure variante (pour expliquer une faute). */
+  pv?: string[]
   /** Seconde meilleure variante (MultiPV 2) : sert a reperer le seul bon coup. */
   second?: { cp: number | null; mate: number | null }
 }
@@ -199,7 +201,7 @@ class Engine {
     const mate = mateMatch ? sign * Number(mateMatch[1]) : null
 
     if (this.mode === 'side') {
-      if (rank === 1) this.sideResult = { cp, mate, depth, bestSan: sans[0], second: this.sideResult?.second }
+      if (rank === 1) this.sideResult = { cp, mate, depth, bestSan: sans[0], pv: sans, second: this.sideResult?.second }
       else if (rank === 2 && this.sideResult) this.sideResult.second = { cp, mate }
       // Des que l'evaluation est assez profonde pour juger un coup, elle est publiee
       // sans attendre la fin de l'analyse : la pastille apparait plus tot.
@@ -221,6 +223,7 @@ class Engine {
         mate,
         depth,
         bestSan: sans[0],
+        pv: sans,
         second: second ? { cp: second.cp, mate: second.mate } : undefined,
       })
     } else if (rank === 2) {

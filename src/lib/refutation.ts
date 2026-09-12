@@ -120,7 +120,6 @@ const lower = (text: string) => text.charAt(0).toLowerCase() + text.slice(1)
 function describePunishment(
   fenAfter: string,
   best: { sans: string[]; mate: number | null } | undefined,
-  verdict: MoveVerdict,
 ): { line: string; points: string[]; replyMotifs: string[] } | null {
   if (!best || best.sans.length === 0) return null
   let chess: Chess
@@ -239,12 +238,14 @@ export function explainFault(input: FaultInput): FaultExplanation | null {
 
   // 2. Punition et ce que le coup concede
   const best = input.bestLine ?? (after?.pv ? { sans: after.pv, mate: after.mate } : undefined)
-  const punishment = describePunishment(input.fenAfter, best, verdict)
+  const punishment = describePunishment(input.fenAfter, best)
   const concedes: string[] = [...(input.warnings ?? [])]
-  if (punishment) {
-    for (const motif of punishment.replyMotifs.slice(0, 2)) {
-      concedes.push(`Laisse ${enemyName} jouer ${punishment.line.split(' ')[0]} : ${lower(motif)}`)
-    }
+  if (punishment && punishment.replyMotifs.length > 0) {
+    const ideas = punishment.replyMotifs
+      .slice(0, 2)
+      .map((motif) => lower(motif).replace(/\.$/, ''))
+      .join(' ; ')
+    concedes.push(`Laisse ${enemyName} jouer ${punishment.line.split(' ')[0]} : ${ideas}.`)
   }
   if (concedes.length === 0 && punishment && punishment.points.length === 0) {
     concedes.push(

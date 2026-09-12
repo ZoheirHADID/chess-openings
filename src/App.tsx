@@ -14,10 +14,11 @@ import { PieceSprite } from './components/pieces'
 import { engine, judgeMove, QUALITY_BADGE } from './lib/engine'
 import { useEngine } from './lib/useEngine'
 import { positionFromSans } from './lib/chess'
-import { totalOf, useMoveStats } from './lib/moveStats'
+import { isResolved, totalOf, useMoveStats } from './lib/moveStats'
 import { explainMove } from './lib/explain'
-import { describeRefutation } from './lib/refutation'
-import { pickTheoryReply, type TrainingScore } from './lib/training'
+import { explainFault } from './lib/refutation'
+import { buildFaultPrompt } from './lib/aiExplain'
+import { chooseReply, STRATEGY_LABEL, STRATEGY_TITLE, type TrainingScore, type TrainingStrategy } from './lib/training'
 import { videoLinkFor } from './data/openingVideos'
 import { buildTree, followSans, nearestNamed, type TreeIndex } from './lib/tree'
 import { buildBranchStatus, loadProgress, markExplored, saveProgress, setStatus } from './lib/progress'
@@ -84,6 +85,9 @@ export default function App() {
   /** Mode « jouer la théorie » : l'ordinateur répond au hasard dans l'arbre. */
   const [training, setTraining] = useState<{ color: 'white' | 'black' } | null>(null)
   const [trainScore, setTrainScore] = useState<TrainingScore>({ found: 0, missed: 0 })
+  const [trainStrategy, setTrainStrategy] = useState<TrainingStrategy>(
+    () => (localStorage.getItem('chess-openings:train-strategy') as TrainingStrategy | null) ?? 'random',
+  )
   const [hintOpen, setHintOpen] = useState(false)
   const [dropping, setDropping] = useState(false)
   const isDesktop = useMediaQuery('(min-width: 1024px)')
@@ -103,6 +107,7 @@ export default function App() {
   useEffect(() => setStorageWarning(!saveGames(games)), [games])
   useEffect(() => localStorage.setItem(USER_KEY, JSON.stringify(usernames)), [usernames])
   useEffect(() => localStorage.setItem('chess-openings:engine', engineOn ? 'on' : 'off'), [engineOn])
+  useEffect(() => localStorage.setItem('chess-openings:train-strategy', trainStrategy), [trainStrategy])
   useEffect(() => localStorage.setItem('chess-openings:side', sideFilter), [sideFilter])
 
   const root = tree?.root ?? null
@@ -206,6 +211,15 @@ export default function App() {
    * Coup theorique suivant a mettre en avant : le plus joue d'apres le bilan
    * Lichess, a defaut la variante principale (celle qui compte le plus de suites).
    */
+  // Le cache des bilans est une Map stable : cette cle change quand les bilans des suites arrivent
+  const childStatsKey = anchor
+    ? anchor.children
+        .map((child) => {
+          const stat = moveStats.get(child.id)
+          return stat ? totalOf(stat) : -1
+        })
+        .join(',')
+    : ''
   const recommendedId = useMemo(() => {
     if (!anchor || outOfBook || anchor.children.length === 0) return null
     let best: TreeNode | null = null
@@ -219,7 +233,7 @@ export default function App() {
       }
     }
     return (best ?? anchor.children[0]).id
-  }, [anchor, outOfBook, moveStats])
+  }, [anchor, outOfBook, moveStats, childStatsKey])
   const handleVisibleParents = useCallback((ids: string[]) => {
     setVisibleParents((prev) => (prev.length === ids.length && prev.every((v, i) => v === ids[i]) ? prev : ids))
   }, [])
@@ -287,10 +301,38 @@ export default function App() {
     if (verdict) return QUALITY_BADGE[verdict.quality]
     return outOfBook ? null : QUALITY_BADGE.book
   }, [line.length, verdict, outOfBook])
-  /** Comment l'adversaire punit une faute : d'apres la meilleure reponse du moteur. */
-  const refutation = useMemo(
-    () => describeRefutation(position.fen, bestLine, verdict),
-    [position.fen, bestLine, verdict],
+  /** Pourquoi le dernier coup est fautif : evaluations, concessions, meilleur coup, punition. */
+  const fault = useMemo(
+    () =>
+      parentFen && line.length > 0
+        ? explainFault({
+            fenBefore: parentFen,
+            fenAfter: position.fen,
+            playedSan: line[line.length - 1],
+            verdict,
+            before: engine.getEval(parentFen),
+            after: engine.getEval(position.fen),
+            bestLine,
+            warnings: explanation?.warnings,
+          })
+        : null,
+    // evalVersion : les evaluations (et leurs variantes) arrivent au fil du calcul
+    [parentFen, position.fen, line, verdict, bestLine, explanation, evalVersion],
+  )
+  const aiPrompt = useMemo(
+    () =>
+      fault && verdict && parentFen
+        ? buildFaultPrompt({
+            fault,
+            sans: line.slice(0, -1),
+            playedSan: line[line.length - 1],
+            fenBefore: parentFen,
+            fenAfter: position.fen,
+            openingName: named?.name,
+            qualityLabel: verdict.label,
+          })
+        : null,
+    [fault, verdict, parentFen, line, position.fen, named],
   )
 
   // La branche parcourue est memorisee et depliee automatiquement. En mode
@@ -309,17 +351,21 @@ export default function App() {
     })
   }, [anchorId, hideReplies])
 
-  // Entrainement : l'ordinateur repond par un coup theorique tire au sort
+  // Entrainement : l'ordinateur repond par un coup theorique selon la strategie
+  // choisie (tirage au sort, variante la plus jouee, variante favorable au joueur)
   useEffect(() => {
     if (!training || !anchor || outOfBook || !computerTurn || anchor.children.length === 0) return
     const expectedId = anchorId
-    const timer = setTimeout(() => {
-      const reply = pickTheoryReply(anchor.children)
-      if (!reply) return
-      setLine((prev) => (prev.join(' ') === expectedId ? [...prev, reply.san] : prev))
-    }, 600)
+    const play = (san: string) => setLine((prev) => (prev.join(' ') === expectedId ? [...prev, san] : prev))
+    const choice = chooseReply(anchor.children, trainStrategy, moveStats, isResolved(anchorId), training.color)
+    if (choice === null) return
+    // Bilan Lichess encore en route : on le laisse arriver, avec un repli sur la variante principale
+    const delay = choice === 'wait' ? 3000 : 600
+    const san = choice === 'wait' ? anchor.children[0].san : choice.san
+    const timer = setTimeout(() => play(san), delay)
     return () => clearTimeout(timer)
-  }, [training, anchor, anchorId, outOfBook, computerTurn])
+    // childStatsKey relance l'effet a l'arrivee des bilans
+  }, [training, trainStrategy, anchor, anchorId, outOfBook, computerTurn, moveStats, childStatsKey])
 
   // L'indice se referme des que la position change
   useEffect(() => setHintOpen(false), [anchorId])
@@ -500,7 +546,8 @@ export default function App() {
       outOfBook={outOfBook}
       compact
       verdict={verdict}
-      refutation={refutation}
+      fault={fault}
+      aiPrompt={aiPrompt}
     />
   )
 
@@ -605,6 +652,23 @@ export default function App() {
             <span className="ml-auto shrink-0 tabular-nums text-indigo-300" title="Coups théoriques trouvés · coups hors théorie">
               <span className="text-emerald-300">{trainScore.found} ✓</span> · <span className="text-rose-300">{trainScore.missed} ✗</span>
             </span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="shrink-0 text-indigo-300">Réponse :</span>
+            <div className="flex rounded-md border border-indigo-700/70 p-0.5">
+              {(Object.keys(STRATEGY_LABEL) as TrainingStrategy[]).map((id) => (
+                <button
+                  key={id}
+                  onClick={() => setTrainStrategy(id)}
+                  title={STRATEGY_TITLE[id]}
+                  className={`rounded px-1.5 py-0.5 text-[10px] font-medium whitespace-nowrap transition-colors ${
+                    trainStrategy === id ? 'bg-indigo-600 text-white' : 'text-indigo-300 hover:text-white'
+                  }`}
+                >
+                  {STRATEGY_LABEL[id]}
+                </button>
+              ))}
+            </div>
           </div>
           <p className="text-indigo-200/90">
             {outOfBook

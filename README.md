@@ -55,11 +55,18 @@ les résultats réels, et analyse **Stockfish** dès que la partie sort de la th
     L'évaluation de la position précédente est calculée en tâche de fond pour permettre cette
     comparaison, et le verdict n'est rendu qu'à partir d'une profondeur suffisante (10 demi-coups) pour ne
     pas juger avant que le moteur ait vu la réfutation.
-  - *Comment l'adversaire en profite* : pour une imprécision, une erreur ou une gaffe, la meilleure
-    variante du moteur est rejouée et traduite en clair : mat forcé, capture (avec échec ou non),
-    fourchette ou pièce menacée sans défense suffisante, matériel perdu au bout de la variante (pion,
-    qualité, pièce, dame), ou simple perte d'initiative chiffrée en pions, avec un rappel du coup qu'il
-    fallait jouer.
+  - *Pourquoi c'est une faute* : pour une imprécision, une erreur, une occasion manquée ou une gaffe,
+    les motifs positifs génériques disparaissent au profit d'une explication construite sur Stockfish :
+    **bascule d'évaluation** avant / après (en pions et en % de chances de gain), **ce que le coup
+    concède** (pièce en prise, roque perdu, idée que la réponse adverse obtient : développement avec
+    tempo, espace, centre…), **le coup qu'il fallait jouer** avec sa variante et ses idées, et
+    **comment l'adversaire en profite** (mat forcé, capture avec échec, fourchette, pièce menacée,
+    matériel perdu au bout de la variante). Disponible moteur éteint aussi, grâce aux évaluations
+    d'arrière-plan.
+  - *Expliquer avec l'IA* : un bouton demande à une **IA générative gratuite** une explication en
+    français à partir de ces faits Stockfish (sans inventer de variantes). Fournisseurs proposés :
+    Google Gemini, Groq, OpenRouter (modèles `:free`) ou Ollama en local, via leur API compatible
+    OpenAI ; la clé, saisie une fois, reste dans le navigateur.
 - Hors de ces lignes, une **analyse automatique de la position** repère les motifs classiques : occupation
   et contrôle du centre, développement, roque, fianchetto, prophylaxie (…a6 contre Bb5), clouages et
   enfilades, pièces attaquées, gain d'espace.
@@ -101,8 +108,14 @@ Un sélecteur en en-tête choisit ce que la couleur traduit :
   et une branche repliée le reste jusqu'à ce qu'on y navigue.
 - **Votre score contre la référence** : sur la branche affichée, l'onglet Étude compare votre pourcentage
   de points à celui des parties Lichess pour le même coup, avec l'écart en points.
-- **« À travailler en priorité »** : les branches où vous marquez le moins (au moins 6 parties), les plus
-  précises d'abord, filtrables par couleur jouée et cliquables pour y aller directement.
+- **« À travailler en priorité »** : les ouvertures à apprendre pour améliorer statistiquement votre score,
+  classées par **priorité** = coût (parties × écart sous 50 %) + récurrence de vos propres **écarts de
+  théorie** (une demi-partie par écart) ; tris alternatifs par coût, défaites ou score, regroupement par
+  ouverture ou par branche, filtre par couleur, clic pour y aller directement. Le bandeau résume la ligne
+  prioritaire et votre erreur la plus fréquente.
+- **« Erreurs récurrentes »** : les coups par lesquels vous quittez la théorie à répétition (position, coup
+  joué, coups théoriques attendus, nombre d'occurrences et score obtenu ensuite). Un clic ouvre la position
+  avec les coups attendus dépliés, d'où l'on peut lancer « Jouer la théorie » pour s'entraîner.
 - Barre de progression, liste du répertoire, export JSON, réinitialisation. Tout est conservé en local
   (`localStorage`), sans compte ni serveur.
 
@@ -116,6 +129,10 @@ Un sélecteur en en-tête choisit ce que la couleur traduit :
 - Pendant votre tour, l'arbre **ne déplie pas les suites** du nœud courant et n'étoile pas le coup le plus
   joué, pour ne pas souffler la réponse ; le bouton `💡 Indice` liste les coups théoriques possibles avec
   le nom de leur variante.
+- **Réponse de l'ordinateur configurable** : *Aléatoire* (tirage pondéré, pour tout voir), *La plus
+  jouée* (variante la plus fréquente sur Lichess, à défaut la variante principale) ou *Favorable pour
+  moi* (variante qui vous réussit le mieux d'après les résultats Lichess, à défaut la plus jouée). Le
+  choix est mémorisé.
 - Un coup hors théorie est compté ✗ et les coups attendus sont affichés, avec `↶ Reprendre` pour revenir
   au dernier nœud théorique ; un coup théorique est compté ✓. Quand la théorie répertoriée s'arrête, la
   partie est gagnée : `🔁 Nouvelle partie` relance, `⇅ Changer de couleur` inverse les rôles.

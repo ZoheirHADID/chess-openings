@@ -1,7 +1,8 @@
 import type { MoveExplanation } from '../lib/explain'
 import { QUALITY_BADGE, type MoveVerdict } from '../lib/engine'
 import QualityGlyph from './QualityGlyph'
-import type { Refutation } from '../lib/refutation'
+import type { FaultExplanation } from '../lib/refutation'
+import AiExplain from './AiExplain'
 
 const VERDICT_STYLE: Record<MoveVerdict['quality'], { bg: string; text: string }> = {
   brilliant: { bg: 'bg-teal-500/20 border-teal-500/60', text: 'text-teal-300' },
@@ -18,26 +19,63 @@ const VERDICT_STYLE: Record<MoveVerdict['quality'], { bg: string; text: string }
 
 const NO_BEST_SHOWN = new Set<MoveVerdict['quality']>(['brilliant', 'great', 'best', 'book'])
 
-/** Comment l'adversaire exploite la faute : variante du moteur et consequences. */
-function Punishment({ refutation, compact }: { refutation: Refutation; compact?: boolean }) {
-  const points = compact ? refutation.points.slice(0, 3) : refutation.points
+/** Pourquoi le coup est fautif : bascule d'evaluation, concessions, meilleur coup, punition. */
+function FaultBlock({ fault, compact }: { fault: FaultExplanation; compact?: boolean }) {
+  const text = compact ? 'text-[10px]' : 'text-[11px]'
+  const head = compact ? 'text-[9px]' : 'text-[10px]'
   return (
     <section
-      className={`rounded-lg border border-rose-800/60 bg-rose-950/20 ${compact ? 'p-2' : 'p-2.5'}`}
-      aria-label="Comment l’adversaire en profite"
+      className={`space-y-1.5 rounded-lg border border-rose-800/60 bg-rose-950/20 ${compact ? 'p-2' : 'p-2.5'}`}
+      aria-label={fault.title}
     >
-      <p className={`mb-1 font-semibold tracking-wide text-rose-400 uppercase ${compact ? 'text-[9px]' : 'text-[10px]'}`}>
-        Comment l’adversaire en profite
-      </p>
-      <p className={`font-mono text-slate-200 ${compact ? 'text-[10px]' : 'text-[11px]'}`}>{refutation.line}</p>
-      <ul className="mt-1 space-y-0.5">
-        {points.map((point) => (
-          <li key={point} className={`flex gap-1.5 leading-snug text-rose-100/90 ${compact ? 'text-[10px]' : 'text-[11px]'}`}>
-            <span className="mt-1.5 h-0.5 w-0.5 shrink-0 rounded-full bg-rose-400" />
-            {point}
-          </li>
-        ))}
-      </ul>
+      <p className={`font-semibold tracking-wide text-rose-400 uppercase ${head}`}>{fault.title}</p>
+      {fault.swing && <p className={`leading-snug text-rose-100/90 ${text}`}>{fault.swing}</p>}
+      {fault.concedes.length > 0 && (
+        <ul className="space-y-0.5">
+          {fault.concedes.map((point) => (
+            <li key={point} className={`flex gap-1.5 leading-snug text-amber-200/90 ${text}`}>
+              <span className="shrink-0">▲</span>
+              {point}
+            </li>
+          ))}
+        </ul>
+      )}
+      {fault.better && (
+        <div className={`rounded-md border border-emerald-800/50 bg-emerald-950/30 px-2 py-1.5 ${text}`}>
+          <p className="text-emerald-200">
+            <span className="font-semibold">Il fallait {fault.better.san}</span>
+            {fault.better.line !== fault.better.san && (
+              <span className="font-mono text-emerald-300/80"> · {fault.better.line}</span>
+            )}
+          </p>
+          {fault.better.reasons.length > 0 && (
+            <ul className="mt-0.5 space-y-0.5">
+              {fault.better.reasons.map((reason) => (
+                <li key={reason} className="flex gap-1.5 leading-snug text-emerald-100/85">
+                  <span className="mt-1.5 h-0.5 w-0.5 shrink-0 rounded-full bg-emerald-400" />
+                  {reason}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+      {fault.punishment && (
+        <div>
+          <p className={`mb-0.5 font-semibold tracking-wide text-rose-400 uppercase ${head}`}>
+            Comment l’adversaire en profite
+          </p>
+          <p className={`font-mono text-slate-200 ${text}`}>{fault.punishment.line}</p>
+          <ul className="mt-0.5 space-y-0.5">
+            {fault.punishment.points.map((point) => (
+              <li key={point} className={`flex gap-1.5 leading-snug text-rose-100/90 ${text}`}>
+                <span className="mt-1.5 h-0.5 w-0.5 shrink-0 rounded-full bg-rose-400" />
+                {point}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </section>
   )
 }
@@ -81,12 +119,23 @@ interface Props {
   compact?: boolean
   /** Jugement du moteur sur ce coup, quand il est activé. */
   verdict?: MoveVerdict | null
-  /** Punition de la faute par l'adversaire (imprécision, erreur, gaffe). */
-  refutation?: Refutation | null
+  /** Pourquoi le coup est fautif (imprécision, erreur, occasion manquée, gaffe). */
+  fault?: FaultExplanation | null
+  /** Requête prête pour une explication par IA générative, quand le coup est fautif. */
+  aiPrompt?: string | null
 }
 
 /** « Pourquoi ce coup ? » — commentaire théorique et analyse de la position. */
-export default function ExplainPanel({ explanation, openingName, eco, outOfBook, compact, verdict, refutation }: Props) {
+export default function ExplainPanel({
+  explanation,
+  openingName,
+  eco,
+  outOfBook,
+  compact,
+  verdict,
+  fault,
+  aiPrompt,
+}: Props) {
   if (!explanation) {
     return (
       <p className="text-sm text-slate-400">
@@ -98,7 +147,8 @@ export default function ExplainPanel({ explanation, openingName, eco, outOfBook,
 
   // Bulle survolée : le coup, l'essentiel, et de quoi approfondir
   if (compact) {
-    const points = explanation.note ? explanation.points.slice(0, 2) : explanation.points.slice(0, 4)
+    // Pour une faute, les motifs positifs generiques n'ont plus leur place
+    const points = fault ? [] : explanation.note ? explanation.points.slice(0, 2) : explanation.points.slice(0, 4)
     return (
       <div className="space-y-1.5">
         <p className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
@@ -112,7 +162,8 @@ export default function ExplainPanel({ explanation, openingName, eco, outOfBook,
         </p>
 
         {verdict && <Verdict verdict={verdict} compact />}
-        {refutation && <Punishment refutation={refutation} compact />}
+        {fault && <FaultBlock fault={fault} compact />}
+        {fault && aiPrompt && <AiExplain prompt={aiPrompt} compact />}
 
         {explanation.note && (
           <p className="border-l-2 border-emerald-600/70 pl-2 text-[11px] leading-relaxed text-slate-200">
@@ -176,7 +227,8 @@ export default function ExplainPanel({ explanation, openingName, eco, outOfBook,
       </p>
 
       {verdict && <Verdict verdict={verdict} />}
-      {refutation && <Punishment refutation={refutation} />}
+      {fault && <FaultBlock fault={fault} />}
+      {fault && aiPrompt && <AiExplain prompt={aiPrompt} />}
 
       {explanation.note && (
         <section className="rounded-lg border border-emerald-800/50 bg-emerald-950/20 p-2.5">
@@ -185,7 +237,7 @@ export default function ExplainPanel({ explanation, openingName, eco, outOfBook,
         </section>
       )}
 
-      {explanation.points.length > 0 && (
+      {!fault && explanation.points.length > 0 && (
         <section>
           <p className="mb-1 text-[10px] font-semibold tracking-wide text-slate-500 uppercase">
             Ce que le coup apporte

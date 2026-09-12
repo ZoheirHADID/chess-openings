@@ -325,6 +325,17 @@ export function numberMove(ply: number, san: string): string {
   return ply % 2 === 1 ? `${moveNumber}. ${san}` : `${moveNumber}...${san}`
 }
 
+/** Motifs positifs d'un coup quelconque depuis une position (comparaison avec le coup joue). */
+export function motifsOf(fen: string, san: string): string[] {
+  try {
+    const chess = new Chess(fen)
+    const move = chess.move(san)
+    return analyse(move as unknown as DetailedMove)
+  } catch {
+    return []
+  }
+}
+
 /**
  * Construit l'explication du dernier coup d'une ligne.
  * `family` est le nom de famille Lichess de la position (pour le plan general).

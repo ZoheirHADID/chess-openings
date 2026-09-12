@@ -13,7 +13,7 @@ interface Props {
 }
 
 type Grouping = 'opening' | 'branch'
-type Sorting = 'impact' | 'losses' | 'score'
+type Sorting = 'priority' | 'impact' | 'losses' | 'score'
 type Side = 'all' | 'white' | 'black'
 
 interface Row {
@@ -29,28 +29,113 @@ interface Row {
   score: number
   /** Points perdus sous la barre des 50 % : le vrai coût de la ligne. */
   impact: number
+  /** Fois ou le joueur a quitte la theorie de lui-meme dans cette ligne. */
+  deviations: number
+  /** Coût + récurrence des écarts : ce qu'apprendre la ligne peut rapporter. */
+  priority: number
+}
+
+/** Ecart de theorie commis par le joueur, agrege sur toutes ses parties. */
+interface Deviation {
+  key: string
+  /** Position (noeud theorique) ou le joueur a quitte la theorie. */
+  nodeId: string
+  /** Coup joue a la place de la theorie. */
+  san: string
+  /** Coups theoriques attendus a cet endroit. */
+  expected: string[]
+  opening: string
+  eco?: string
+  count: number
+  wins: number
+  draws: number
+  losses: number
+  score: number
 }
 
 /** En dessous, l'echantillon ne veut rien dire. */
 const MIN_GAMES = 5
 const MIN_PLIES = 4
+/** Poids d'un ecart de theorie repete, en points, dans la priorite. */
+const DEVIATION_WEIGHT = 0.5
 
-const finish = (row: Omit<Row, 'score' | 'impact'>): Row => {
+const finish = (row: Omit<Row, 'score' | 'impact' | 'priority'>): Row => {
   const score = row.total > 0 ? (row.wins + row.draws / 2) / row.total : 0
-  return { ...row, score, impact: row.total * Math.max(0, 0.5 - score) }
+  const impact = row.total * Math.max(0, 0.5 - score)
+  return { ...row, score, impact, priority: impact + DEVIATION_WEIGHT * row.deviations }
+}
+
+/** Resultat de la partie pour le joueur. */
+function resultFor(game: ImportedGame): 'win' | 'draw' | 'loss' | null {
+  if (game.result === '1/2-1/2') return 'draw'
+  if (!game.color) return null
+  if (game.result === '1-0') return game.color === 'white' ? 'win' : 'loss'
+  if (game.result === '0-1') return game.color === 'black' ? 'win' : 'loss'
+  return null
+}
+
+/**
+ * Le premier ecart de theorie de la partie, s'il est le fait du joueur :
+ * position ou la theorie s'arrete et coup joue a la place.
+ */
+function ownDeviation(game: ImportedGame): { nodeId: string; san: string } | null {
+  if (!game.color) return null
+  const matched = game.nodeId ? game.nodeId.split(' ').length : 0
+  if (matched >= game.sans.length) return null
+  const mover = matched % 2 === 0 ? 'white' : 'black'
+  if (mover !== game.color) return null
+  return { nodeId: game.nodeId ?? '', san: game.sans[matched] }
 }
 
 export default function WeakSpots({ games, stats, byId, onSelect }: Props) {
   const [grouping, setGrouping] = useState<Grouping>('opening')
-  const [sorting, setSorting] = useState<Sorting>('impact')
+  const [sorting, setSorting] = useState<Sorting>('priority')
   const [side, setSide] = useState<Side>('all')
 
+  const selected = useMemo(() => (side === 'all' ? games : games.filter((g) => g.color === side)), [games, side])
+
+  /** Ecarts de theorie du joueur, regroupes par position et coup. */
+  const deviations = useMemo(() => {
+    const byKey = new Map<string, Deviation>()
+    for (const game of selected) {
+      const dev = ownDeviation(game)
+      if (!dev) continue
+      const key = `${dev.nodeId}|${dev.san}`
+      let entry = byKey.get(key)
+      if (!entry) {
+        const node = byId.get(dev.nodeId)
+        const named = node ? nearestNamed(node) : null
+        entry = {
+          key,
+          nodeId: dev.nodeId,
+          san: dev.san,
+          expected: node ? node.children.slice(0, 3).map((c) => c.san) : [],
+          opening: named?.name ?? game.openingName ?? 'Hors répertoire Lichess',
+          eco: named?.eco ?? game.openingEco,
+          count: 0,
+          wins: 0,
+          draws: 0,
+          losses: 0,
+          score: 0,
+        }
+        byKey.set(key, entry)
+      }
+      entry.count++
+      const res = resultFor(game)
+      if (res === 'win') entry.wins++
+      else if (res === 'draw') entry.draws++
+      else if (res === 'loss') entry.losses++
+    }
+    const list = [...byKey.values()].map((d) => ({ ...d, score: d.count > 0 ? (d.wins + d.draws / 2) / d.count : 0 }))
+    // Recurrence d'abord, puis gravite (score le plus bas)
+    return list.filter((d) => d.count >= 2).sort((a, b) => b.count - a.count || a.score - b.score)
+  }, [selected, byId])
+
   const rows = useMemo(() => {
-    const selected = side === 'all' ? games : games.filter((g) => g.color === side)
     let list: Row[] = []
 
     if (grouping === 'opening') {
-      const byOpening = new Map<string, Omit<Row, 'score' | 'impact'>>()
+      const byOpening = new Map<string, Omit<Row, 'score' | 'impact' | 'priority'>>()
       for (const game of selected) {
         const key = game.openingName ?? 'Hors répertoire Lichess'
         let row = byOpening.get(key)
@@ -64,21 +149,25 @@ export default function WeakSpots({ games, stats, byId, onSelect }: Props) {
             wins: 0,
             draws: 0,
             losses: 0,
+            deviations: 0,
           }
           byOpening.set(key, row)
         }
         row.total++
-        if (game.result === '1/2-1/2') row.draws++
-        else if (game.color) {
-          const won =
-            (game.result === '1-0' && game.color === 'white') || (game.result === '0-1' && game.color === 'black')
-          if (won) row.wins++
-          else row.losses++
-        }
+        const res = resultFor(game)
+        if (res === 'win') row.wins++
+        else if (res === 'draw') row.draws++
+        else if (res === 'loss') row.losses++
+        if (ownDeviation(game)) row.deviations++
       }
       list = [...byOpening.values()].filter((r) => r.total >= MIN_GAMES).map(finish)
     } else {
       // Regroupement par noeud : plus precis, mais uniquement sans filtre de couleur
+      const deviationsByNode = new Map<string, number>()
+      for (const game of selected) {
+        const dev = ownDeviation(game)
+        if (dev) deviationsByNode.set(dev.nodeId, (deviationsByNode.get(dev.nodeId) ?? 0) + 1)
+      }
       const candidates: Row[] = []
       for (const [id, stat] of stats) {
         if (!id || id.split(' ').length < MIN_PLIES || stat.total < MIN_GAMES) continue
@@ -86,6 +175,11 @@ export default function WeakSpots({ games, stats, byId, onSelect }: Props) {
         if (side === 'black' && stat.asBlack === 0) continue
         const node = byId.get(id)
         const named = node ? nearestNamed(node) : null
+        // Ecarts commis sur ce noeud ou en aval
+        let deviationCount = 0
+        for (const [nodeId, count] of deviationsByNode) {
+          if (nodeId === id || nodeId.startsWith(`${id} `)) deviationCount += count
+        }
         candidates.push(
           finish({
             key: id,
@@ -96,6 +190,7 @@ export default function WeakSpots({ games, stats, byId, onSelect }: Props) {
             wins: stat.wins,
             draws: stat.draws,
             losses: stat.losses,
+            deviations: deviationCount,
           }),
         )
       }
@@ -111,16 +206,18 @@ export default function WeakSpots({ games, stats, byId, onSelect }: Props) {
     }
 
     const compare: Record<Sorting, (a: Row, b: Row) => number> = {
+      priority: (a, b) => b.priority - a.priority || b.losses - a.losses,
       impact: (a, b) => b.impact - a.impact || b.losses - a.losses,
       losses: (a, b) => b.losses - a.losses || a.score - b.score,
       score: (a, b) => a.score - b.score || b.total - a.total,
     }
     return list.sort(compare[sorting]).slice(0, 12)
-  }, [games, stats, byId, grouping, sorting, side])
+  }, [selected, stats, byId, grouping, sorting, side])
 
   if (games.length === 0) return null
 
   const worst = rows[0]
+  const topDeviation = deviations[0]
 
   return (
     <section>
@@ -170,6 +267,7 @@ export default function WeakSpots({ games, stats, byId, onSelect }: Props) {
         <div className="flex gap-0.5 rounded-md border border-slate-700 p-0.5 text-[10px]">
           {(
             [
+              { id: 'priority', label: 'Priorité', title: 'Coût + récurrence de vos écarts de théorie : le gain à apprendre la ligne' },
               { id: 'impact', label: 'Coût', title: 'Points perdus sous la barre des 50 %' },
               { id: 'losses', label: 'Défaites', title: 'Nombre brut de défaites' },
               { id: 'score', label: 'Score', title: 'Pourcentage de points le plus bas' },
@@ -196,11 +294,22 @@ export default function WeakSpots({ games, stats, byId, onSelect }: Props) {
         </p>
       ) : (
         <>
-          {worst && worst.impact > 0.5 && (
+          {worst && worst.priority > 0.5 && (
             <p className="mb-2 rounded-lg border border-rose-800/50 bg-rose-950/25 px-2.5 py-1.5 text-[11px] text-rose-200">
               Priorité : <strong>{worst.label}</strong> vous coûte {worst.impact.toFixed(1)} point
               {worst.impact >= 2 ? 's' : ''} ({worst.losses} défaite{worst.losses > 1 ? 's' : ''} sur {worst.total}{' '}
-              parties).
+              parties)
+              {worst.deviations > 0 &&
+                `, et vous y quittez la théorie ${worst.deviations} fois de vous-même`}
+              .
+              {topDeviation && (
+                <>
+                  {' '}
+                  Erreur la plus fréquente : <strong>{topDeviation.san}</strong> après {topDeviation.opening} (
+                  {topDeviation.count} fois
+                  {topDeviation.expected.length > 0 && `, la théorie joue ${topDeviation.expected.join(', ')}`}).
+                </>
+              )}
             </p>
           )}
 
@@ -233,8 +342,13 @@ export default function WeakSpots({ games, stats, byId, onSelect }: Props) {
                     <span className="mt-0.5 flex items-baseline gap-2 text-[10px] text-slate-500">
                       <span>
                         {row.total} parties · {row.wins}G {row.draws}N {row.losses}P
+                        {row.deviations > 0 && (
+                          <span className="text-amber-500/90"> · {row.deviations} écart{row.deviations > 1 ? 's' : ''} de théorie</span>
+                        )}
                       </span>
-                      <span className="ml-auto shrink-0">coût {row.impact.toFixed(1)} pt</span>
+                      <span className="ml-auto shrink-0">
+                        {sorting === 'priority' ? `priorité ${row.priority.toFixed(1)}` : `coût ${row.impact.toFixed(1)} pt`}
+                      </span>
                     </span>
                   </button>
                 </li>
@@ -242,10 +356,53 @@ export default function WeakSpots({ games, stats, byId, onSelect }: Props) {
             })}
           </ul>
           <p className="mt-2 text-[10px] text-slate-600">
-            Coût = nombre de parties × écart sous 50 %. Une ligne jouée souvent et perdue souvent remonte avant une
-            ligne rare mais catastrophique.
+            Coût = nombre de parties × écart sous 50 %. Priorité = coût + {DEVIATION_WEIGHT} point par écart de théorie
+            que vous commettez vous-même : une ligne souvent jouée, souvent perdue et où vous sortez de la théorie
+            est celle qui rapportera le plus à apprendre.
           </p>
         </>
+      )}
+
+      {deviations.length > 0 && (
+        <div className="mt-4">
+          <h3 className="mb-1.5 text-xs font-semibold tracking-wide text-slate-400 uppercase">Erreurs récurrentes</h3>
+          <p className="mb-2 text-[10px] text-slate-500">
+            Coups par lesquels vous quittez la théorie à répétition. Un clic ouvre la position : les coups
+            théoriques attendus y sont dépliés.
+          </p>
+          <ul className="space-y-1">
+            {deviations.slice(0, 8).map((dev) => {
+              const percent = Math.round(dev.score * 100)
+              return (
+                <li key={dev.key}>
+                  <button
+                    onClick={() => onSelect(dev.nodeId)}
+                    className="w-full rounded-lg border border-amber-800/50 bg-amber-950/15 px-2.5 py-1.5 text-left transition-colors hover:bg-amber-950/35"
+                  >
+                    <span className="flex items-center gap-2">
+                      <span className="shrink-0 rounded bg-amber-900/60 px-1.5 py-0.5 font-mono text-[11px] font-bold text-amber-100">
+                        {dev.san}
+                      </span>
+                      <span className="min-w-0 flex-1 truncate text-xs text-slate-200">
+                        {dev.eco && <span className="text-slate-500">{dev.eco} </span>}
+                        {dev.opening}
+                      </span>
+                      <span className="shrink-0 text-[11px] font-semibold text-amber-300">×{dev.count}</span>
+                    </span>
+                    <span className="mt-0.5 flex items-baseline gap-2 text-[10px] text-slate-500">
+                      <span className="truncate">
+                        {dev.expected.length > 0 ? `Théorie : ${dev.expected.join(', ')}` : 'Fin de la théorie répertoriée'}
+                      </span>
+                      <span className="ml-auto shrink-0">
+                        {percent} % · {dev.wins}G {dev.draws}N {dev.losses}P
+                      </span>
+                    </span>
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
+        </div>
       )}
     </section>
   )
