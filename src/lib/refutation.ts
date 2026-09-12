@@ -1,16 +1,23 @@
 import { Chess } from 'chess.js'
-import type { EngineLine, MoveVerdict } from './engine'
+import { scoreFor, type EngineLine, type MoveVerdict, type StoredEval } from './engine'
+import { motifsOf } from './explain'
 
 /**
- * Explication de la punition d'une faute : comment l'adversaire exploite une
- * imprecision, une erreur ou une gaffe, d'apres la meilleure variante du moteur
- * dans la position qui suit le coup fautif.
+ * Explication d'une faute (imprecision, erreur, occasion manquee, gaffe),
+ * construite a partir des evaluations Stockfish : bascule d'evaluation, ce que
+ * le coup concede, ce qu'il fallait jouer et pourquoi, punition adverse.
  */
-export interface Refutation {
-  /** Variante numerotee, ex. « 3.Qxe5+ Be7 4.Qxg7 ». */
-  line: string
-  /** Ce que l'adversaire obtient, phrase par phrase. */
-  points: string[]
+export interface FaultExplanation {
+  /** « Pourquoi c'est une imprécision ». */
+  title: string
+  /** Bascule d'evaluation avant / apres, du point de vue du joueur. */
+  swing: string
+  /** Ce que le coup concede : faits verifies dans la position. */
+  concedes: string[]
+  /** Coup recommande par le moteur, sa variante et ses idees. */
+  better?: { san: string; line: string; reasons: string[] }
+  /** Comment l'adversaire exploite la faute. */
+  punishment?: { line: string; points: string[] }
 }
 
 const PIECE_NAMES: Record<string, string> = {
@@ -26,6 +33,12 @@ const article = (type: string) => (FEMININE.has(type) ? 'la' : 'le')
 const VALUES: Record<string, number> = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 }
 
 const FAULTS = new Set<MoveVerdict['quality']>(['inaccuracy', 'mistake', 'miss', 'blunder'])
+const FAULT_TITLE: Partial<Record<MoveVerdict['quality'], string>> = {
+  inaccuracy: 'Pourquoi c’est une imprécision',
+  mistake: 'Pourquoi c’est une erreur',
+  miss: 'Pourquoi c’est une occasion manquée',
+  blunder: 'Pourquoi c’est une gaffe',
+}
 /** Demi-coups de la variante pris en compte. */
 const PLIES = 6
 
@@ -57,7 +70,7 @@ function hangingPieces(chess: Chess, victim: 'w' | 'b'): { square: string; type:
   return found.sort((a, b) => VALUES[b.type] - VALUES[a.type])
 }
 
-/** « un pion », « deux pions », « une pièce mineure », « la qualité », « du matériel (N points) ». */
+/** « un pion », « deux pions », « une pièce mineure », « la qualité »… */
 function describeLoss(points: number, captures: string[]): string {
   if (points >= 9) return 'la dame'
   if (points === 5) return 'une tour'
@@ -67,7 +80,8 @@ function describeLoss(points: number, captures: string[]): string {
   return `du matériel (${points} points)`
 }
 
-function numberLine(fen: string, sans: string[]): string {
+/** Variante numerotee a partir d'une position. */
+export function numberLine(fen: string, sans: string[]): string {
   const parts = fen.split(' ')
   const whiteToMove = parts[1] !== 'b'
   let move = Number(parts[5] ?? 1)
@@ -83,17 +97,32 @@ function numberLine(fen: string, sans: string[]): string {
   return out.join(' ')
 }
 
-/**
- * Decrit la punition d'un coup fautif. `fenAfter` est la position apres le
- * coup, `best` la meilleure variante du moteur dans cette position.
- */
-export function describeRefutation(
-  fenAfter: string,
-  best: EngineLine | undefined,
-  verdict: MoveVerdict | null,
-): Refutation | null {
-  if (!verdict || !FAULTS.has(verdict.quality) || !best || best.sans.length === 0) return null
+/** Evaluation en pions, signee, du point de vue du joueur : « +0,4 », « −1,2 », « mat en 3 ». */
+function formatScore(value: Pick<StoredEval, 'cp' | 'mate'> | undefined, mover: 'w' | 'b'): string | null {
+  if (!value) return null
+  if (value.mate !== null) {
+    const forMover = (mover === 'w' ? value.mate : -value.mate) > 0
+    return `${forMover ? 'mat en votre faveur' : 'mat contre vous'} en ${Math.abs(value.mate)}`
+  }
+  const score = scoreFor(value, mover)
+  if (score === null) return null
+  const pawns = score / 100
+  return `${pawns > 0 ? '+' : pawns < 0 ? '−' : ''}${Math.abs(pawns).toFixed(1).replace('.', ',')}`
+}
 
+/** Premiere lettre en minuscule (pour enchainer apres « : »). */
+const lower = (text: string) => text.charAt(0).toLowerCase() + text.slice(1)
+
+/**
+ * Punition : la meilleure variante de l'adversaire dans la position qui suit le
+ * coup fautif, rejouee et traduite en clair.
+ */
+function describePunishment(
+  fenAfter: string,
+  best: { sans: string[]; mate: number | null } | undefined,
+  verdict: MoveVerdict,
+): { line: string; points: string[]; replyMotifs: string[] } | null {
+  if (!best || best.sans.length === 0) return null
   let chess: Chess
   try {
     chess = new Chess(fenAfter)
@@ -118,8 +147,7 @@ export function describeRefutation(
       break
     }
     played.push(move.san)
-    const byEnemy = move.color === enemy
-    if (byEnemy && move.captured) {
+    if (move.color === enemy && move.captured) {
       captures.push(`${article(move.captured)} ${PIECE_NAMES[move.captured]} en ${move.to}`)
     }
     if (i === 0) {
@@ -131,12 +159,11 @@ export function describeRefutation(
 
   const points: string[] = []
   const mateForEnemy = best.mate !== null && (enemy === 'w' ? best.mate > 0 : best.mate < 0)
+  const mateInOne = mateForEnemy && Math.abs(best.mate!) === 1
   if (mateForEnemy) {
     points.push(`L’adversaire force le mat en ${Math.abs(best.mate!)} coup${Math.abs(best.mate!) > 1 ? 's' : ''}.`)
   }
 
-  // Premier coup de la punition (un mat en un se passe de commentaire)
-  const mateInOne = mateForEnemy && Math.abs(best.mate!) === 1
   if (firstReply.captured && !mateInOne) {
     points.push(
       `${firstReply.san} prend ${article(firstReply.captured)} ${PIECE_NAMES[firstReply.captured]} en ${firstReply.to}${
@@ -153,33 +180,92 @@ export function describeRefutation(
         `${firstReply.san} donne échec et attaque en même temps ${name(others[0])} : une fourchette, la pièce est perdue.`,
       )
     } else if (others.length >= 2) {
-      points.push(`${firstReply.san} attaque ${others.slice(0, 2).map(name).join(' et ')} : une fourchette, l’une des deux tombe.`)
+      points.push(
+        `${firstReply.san} attaque ${others.slice(0, 2).map(name).join(' et ')} : une fourchette, l’une des deux tombe.`,
+      )
     } else if (others.length === 1) {
-      points.push(`${firstReply.san} menace ${name(others[0])}, insuffisamment défendu${FEMININE.has(others[0].type) ? 'e' : ''}.`)
+      points.push(
+        `${firstReply.san} menace ${name(others[0])}, insuffisamment défendu${FEMININE.has(others[0].type) ? 'e' : ''}.`,
+      )
     } else if (firstReply.check && !firstReply.captured) {
       points.push(`${firstReply.san} donne échec et gagne un temps.`)
     }
   }
 
-  // Bilan materiel au bout de la variante
   const balanceAfter = material(chess, victim) - material(chess, enemy)
   const lost = balanceBefore - balanceAfter
-  if (!mateForEnemy) {
-    if (lost >= 1) {
-      const extra = captures.length > 1 ? ` (${captures.slice(0, 3).join(', ')})` : ''
-      points.push(`Au bout de la variante, vous perdez ${describeLoss(lost, captures)}${extra}.`)
-    } else if (points.length === 0) {
-      const pawns = (verdict.loss / 100).toFixed(1)
-      points.push(
-        `Pas de gain de matériel immédiat, mais l’adversaire prend l’initiative : l’évaluation chute de ${pawns} pion${
-          verdict.loss >= 200 ? 's' : ''
-        }.`,
-      )
-    }
-  }
-  if (verdict.best && !points.some((p) => p.includes(verdict.best!))) {
-    points.push(`Il fallait jouer ${verdict.best}.`)
+  if (!mateForEnemy && lost >= 1) {
+    const extra = captures.length > 1 ? ` (${captures.slice(0, 3).join(', ')})` : ''
+    points.push(`Au bout de la variante, vous perdez ${describeLoss(lost, captures)}${extra}.`)
   }
 
-  return { line: numberLine(fenAfter, played), points }
+  // Idees positionnelles de la reponse adverse (developpement avec tempo, espace, centre…)
+  const replyMotifs = motifsOf(fenAfter, firstReply.san).filter((m) => !m.startsWith('Capture') && !m.startsWith('Attaque'))
+
+  return { line: numberLine(fenAfter, played), points, replyMotifs }
+}
+
+export interface FaultInput {
+  fenBefore: string
+  fenAfter: string
+  playedSan: string
+  verdict: MoveVerdict | null
+  /** Evaluation de la position avant le coup (meilleur coup, variante, score). */
+  before?: StoredEval
+  /** Evaluation de la position apres le coup. */
+  after?: StoredEval
+  /** Analyse principale en cours sur la position apres le coup, si le moteur est allume. */
+  bestLine?: EngineLine
+  /** Defauts deja reperes par l'analyse de motifs (piece en prise, roque perdu…). */
+  warnings?: string[]
+}
+
+/** Explication complete d'une faute ; `null` si le coup n'en est pas une. */
+export function explainFault(input: FaultInput): FaultExplanation | null {
+  const { verdict, before, after } = input
+  if (!verdict || !FAULTS.has(verdict.quality)) return null
+
+  const mover: 'w' | 'b' = input.fenBefore.split(' ')[1] === 'b' ? 'b' : 'w'
+  const enemyName = mover === 'w' ? 'les noirs' : 'les blancs'
+
+  // 1. Bascule d'evaluation
+  const scoreBefore = formatScore(before, mover)
+  const scoreAfter = formatScore(after, mover)
+  let swing = ''
+  if (scoreBefore && scoreAfter) {
+    const drop = (verdict.loss / 100).toFixed(1).replace('.', ',')
+    swing = `Avant ${input.playedSan}, Stockfish vous donnait ${scoreBefore} ; après, ${scoreAfter}. Le coup coûte ${drop} pion d’évaluation (${Math.round(verdict.drop)} % de chances de gain en moins).`
+  }
+
+  // 2. Punition et ce que le coup concede
+  const best = input.bestLine ?? (after?.pv ? { sans: after.pv, mate: after.mate } : undefined)
+  const punishment = describePunishment(input.fenAfter, best, verdict)
+  const concedes: string[] = [...(input.warnings ?? [])]
+  if (punishment) {
+    for (const motif of punishment.replyMotifs.slice(0, 2)) {
+      concedes.push(`Laisse ${enemyName} jouer ${punishment.line.split(' ')[0]} : ${lower(motif)}`)
+    }
+  }
+  if (concedes.length === 0 && punishment && punishment.points.length === 0) {
+    concedes.push(
+      `Pas de perte de matériel immédiate : le coup est trop lent ou mal placé, ${enemyName} prennent l’initiative avec ${punishment.line.split(' ')[0]}.`,
+    )
+  }
+
+  // 3. Ce qu'il fallait jouer, et pourquoi
+  let better: FaultExplanation['better']
+  const bestSan = verdict.best ?? before?.bestSan
+  if (bestSan && bestSan !== input.playedSan) {
+    const pv = before?.pv && before.pv[0] === bestSan ? before.pv.slice(0, PLIES) : [bestSan]
+    const reasons = motifsOf(input.fenBefore, bestSan).slice(0, 3)
+    better = { san: bestSan, line: numberLine(input.fenBefore, pv), reasons }
+  }
+
+  return {
+    title: FAULT_TITLE[verdict.quality] ?? 'Pourquoi ce coup est fautif',
+    swing,
+    concedes: [...new Set(concedes)].slice(0, 4),
+    better,
+    punishment: punishment && punishment.points.length > 0 ? { line: punishment.line, points: punishment.points } : undefined,
+  }
 }
