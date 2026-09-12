@@ -13,6 +13,7 @@ import WeakSpots from './components/WeakSpots'
 import { PieceSprite } from './components/pieces'
 import OpeningName from './components/OpeningName'
 import { frName } from './lib/frenchNames'
+import { aggregateDeviations, deviationKey, type TheoryGap } from './lib/deviations'
 import { engine, judgeMove, QUALITY_BADGE } from './lib/engine'
 import { useEngine } from './lib/useEngine'
 import { positionFromSans } from './lib/chess'
@@ -303,6 +304,32 @@ export default function App() {
     if (verdict) return QUALITY_BADGE[verdict.quality]
     return outOfBook ? null : QUALITY_BADGE.book
   }, [line.length, verdict, outOfBook])
+  /** Ecarts de theorie commis dans vos parties, par position et coup. */
+  const deviationStats = useMemo(() => aggregateDeviations(mapping.games), [mapping.games])
+
+  /**
+   * Le coup affiche quitte la theorie : ou est le probleme (combien de fois
+   * dans vos parties) et quels coups theoriques etaient attendus, les plus
+   * joues sur Lichess d'abord.
+   */
+  const theoryGap = useMemo<TheoryGap | null>(() => {
+    if (!anchor || !outOfBook || freeLine.length !== 1) return null
+    const san = freeLine[0]
+    const stat = deviationStats.get(deviationKey(anchorId, san))
+    const expected = anchor.children
+      .map((child) => {
+        const s = moveStats.get(child.id)
+        return { san: child.san, name: nearestNamed(child)?.name, games: s ? totalOf(s) : 0 }
+      })
+      .sort((a, b) => b.games - a.games)
+      .slice(0, 4)
+    return { san, count: stat?.count ?? 0, losses: stat?.losses ?? 0, expected }
+    // childStatsKey : les bilans Lichess arrivent dans la meme Map
+  }, [anchor, anchorId, outOfBook, freeLine, deviationStats, moveStats, childStatsKey])
+
+  /** Remplace l'ecart de theorie par le coup theorique choisi. */
+  const playTheory = useCallback((san: string) => setLine((prev) => [...prev.slice(0, -1), san]), [])
+
   /** Pourquoi le dernier coup est fautif : evaluations, concessions, meilleur coup, punition. */
   const fault = useMemo(
     () =>
@@ -550,6 +577,8 @@ export default function App() {
       verdict={verdict}
       fault={fault}
       aiPrompt={aiPrompt}
+      theoryGap={theoryGap}
+      onPlayTheory={playTheory}
     />
   )
 

@@ -23,7 +23,10 @@ les résultats réels, et analyse **Stockfish** dès que la partie sort de la th
 - Dépliage progressif branche par branche (bouton `+` / `–`), avec `+ N autres coups` pour les nœuds
   très ramifiés.
 - Épaisseur des branches proportionnelle au nombre de variantes en aval ; code ECO et nom de variante
-  affichés sur chaque nœud nommé.
+  affichés sur chaque nœud nommé. Les chiffres d'un nœud sont distingués : pastille grise avec icône de
+  ramification = **variantes théoriques en aval** (catalogue), pastille blanche / noire étiquetée
+  **« moi »** = **vos parties importées** (blancs / noirs), pourcentage coloré = **score des blancs sur
+  Lichess** (mode Résultats). Une légende permanente le rappelle en haut de l'arbre.
 - Pan / zoom à la souris, à la molette et au **pincement tactile**, boutons vue d'ensemble et recentrage.
 - **Noms d'ouvertures en français** partout (arbre, échiquier, recherche, parties, étude) : les familles
   courantes ont leur nom consacré (partie espagnole, défense est-indienne, gambit dame refusé…), les
@@ -120,7 +123,11 @@ Un sélecteur en en-tête choisit ce que la couleur traduit :
   lequel vous quittez la théorie le plus cher et le plus souvent** dans cette ligne (coup joué, occurrences
   et coups théoriques attendus affichés sur la ligne), avec son verdict et son explication ; `◀` ramène à la
   position théorique, où l'arbre montre les coups attendus. À défaut d'écart, le clic mène au nœud de
-  l'ouverture. Le bandeau résume la ligne prioritaire et cet écart.
+  l'ouverture. Le bandeau résume la ligne prioritaire et cet écart. Sur l'échiquier, la **bulle du dernier
+  coup** explique alors où se situe le problème (« Dans N de vos parties, vous jouez X ici, N défaites »)
+  et donne le **coup théorique préconisé** (le plus joué sur Lichess, avec le nom de sa variante) et les
+  autres coups théoriques, chacun jouable d'un clic à la place de l'écart. Le même bloc apparaît pour tout
+  coup qui quitte la théorie, même hors étude.
 - **« Erreurs récurrentes »** : les coups par lesquels vous quittez la théorie à répétition (position, coup
   joué, coups théoriques attendus, nombre d'occurrences et score obtenu ensuite). Un clic rejoue le coup
   fautif sur l'échiquier, d'où l'on peut revenir dans la théorie et lancer « Jouer la théorie ».

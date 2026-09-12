@@ -531,8 +531,19 @@ export default function OpeningTree({
                         }}
                       >
                         <title>
-                          {`${games.total} partie(s) : ${games.asWhite} avec les blancs, ${games.asBlack} avec les noirs`}
+                          {`Vos parties importées : ${games.total} sur cette branche (${games.asWhite} avec les blancs, ${games.asBlack} avec les noirs)`}
                         </title>
+                        <text
+                          x={-3}
+                          y={11.5}
+                          fontSize={7}
+                          fontWeight={700}
+                          textAnchor="end"
+                          fill="#c4b5fd"
+                          className="pointer-events-none select-none"
+                        >
+                          moi
+                        </text>
                         {both ? (
                           <>
                             <rect width={34} height={16} rx={5} fill="#f1f5f9" stroke="#0f172a" strokeWidth={0.8} />
@@ -601,9 +612,27 @@ export default function OpeningTree({
                       {isOpen ? '–' : '+'}
                     </text>
                     {!isOpen && node.count > 1 && (
-                      <text x={14} y={3.5} fontSize={9} fill="#64748b">
-                        {node.count}
-                      </text>
+                      <g transform="translate(13, -7)">
+                        <title>{`${node.count} variantes théoriques en aval (catalogue Lichess)`}</title>
+                        <rect
+                          width={16 + String(node.count).length * 5.5}
+                          height={14}
+                          rx={7}
+                          fill="#0f172a"
+                          stroke="#475569"
+                          strokeWidth={0.8}
+                        />
+                        <path
+                          d="M6.5 11 V7.5 M6.5 7.5 L4 3.5 M6.5 7.5 L9 3.5"
+                          stroke="#94a3b8"
+                          strokeWidth={1.3}
+                          fill="none"
+                          strokeLinecap="round"
+                        />
+                        <text x={12} y={10.5} fontSize={9} fill="#94a3b8" fontWeight={600}>
+                          {node.count}
+                        </text>
+                      </g>
                     )}
                   </g>
                 )}
@@ -675,21 +704,38 @@ export default function OpeningTree({
         </div>
       )}
 
-      {colorMode === 'stats' && (
-        <div className="absolute top-2 left-2 max-w-[70%] rounded-lg border border-slate-700 bg-slate-900/90 px-2 py-1 text-[9px] text-slate-300 backdrop-blur sm:top-3 sm:left-3 sm:px-2.5 sm:py-1.5 sm:text-[10px]">
-          <p className="mb-1 font-semibold">Score des blancs (Lichess)</p>
-          <div className="flex items-center gap-1.5">
-            <span>Noirs</span>
-            <span
-              className="h-2 w-24 rounded-full"
-              style={{ background: 'linear-gradient(to right, rgb(248,113,113), rgb(100,116,139), rgb(219,234,254))' }}
-            />
-            <span>Blancs</span>
-          </div>
-          <p className="mt-1 text-slate-500">Épaisseur = popularité · gris = peu de parties</p>
-          <p className="mt-1 text-slate-500">Pastille : vos parties, blancs à gauche, noirs à droite</p>
-        </div>
-      )}
+      <div className="absolute top-2 left-2 max-w-[78%] space-y-1 rounded-lg border border-slate-700 bg-slate-900/90 px-2 py-1 text-[9px] text-slate-300 backdrop-blur sm:top-3 sm:left-3 sm:px-2.5 sm:py-1.5 sm:text-[10px]">
+        {colorMode === 'stats' && (
+          <>
+            <p className="font-semibold">Score des blancs (Lichess)</p>
+            <div className="flex items-center gap-1.5">
+              <span>Noirs</span>
+              <span
+                className="h-2 w-24 rounded-full"
+                style={{ background: 'linear-gradient(to right, rgb(248,113,113), rgb(100,116,139), rgb(219,234,254))' }}
+              />
+              <span>Blancs</span>
+            </div>
+            <p className="text-slate-500">Épaisseur = popularité · gris = peu de parties · % sur le nœud</p>
+          </>
+        )}
+        <p className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-slate-400">
+          <span className="inline-flex items-center gap-0.5 rounded-full border border-slate-600 bg-slate-950 px-1.5 font-semibold text-slate-300">
+            <svg width="7" height="9" viewBox="0 0 8 12" aria-hidden>
+              <path d="M4 11 V7 M4 7 L1.5 3 M4 7 L6.5 3" stroke="#94a3b8" strokeWidth="1.3" fill="none" strokeLinecap="round" />
+            </svg>
+            12
+          </span>
+          <span>= variantes théoriques en aval</span>
+          <span className="text-slate-600">·</span>
+          <span className="font-bold text-violet-300">moi</span>
+          <span className="inline-flex overflow-hidden rounded border border-slate-500 text-[8px] leading-3 font-bold">
+            <span className="bg-slate-100 px-1 text-slate-900">3</span>
+            <span className="bg-slate-900 px-1 text-slate-100">1</span>
+          </span>
+          <span>= vos parties importées (blancs / noirs)</span>
+        </p>
+      </div>
 
       {filter === 'repertoire' && nodes.length <= 1 && (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-6">

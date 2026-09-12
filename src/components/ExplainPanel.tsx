@@ -4,6 +4,8 @@ import QualityGlyph from './QualityGlyph'
 import type { FaultExplanation } from '../lib/refutation'
 import AiExplain from './AiExplain'
 import OpeningName from './OpeningName'
+import { frName } from '../lib/frenchNames'
+import type { TheoryGap } from '../lib/deviations'
 
 const VERDICT_STYLE: Record<MoveVerdict['quality'], { bg: string; text: string }> = {
   brilliant: { bg: 'bg-teal-500/20 border-teal-500/60', text: 'text-teal-300' },
@@ -19,6 +21,79 @@ const VERDICT_STYLE: Record<MoveVerdict['quality'], { bg: string; text: string }
 }
 
 const NO_BEST_SHOWN = new Set<MoveVerdict['quality']>(['brilliant', 'great', 'best', 'book'])
+
+/**
+ * Ecart de theorie : ou se situe le probleme (le coup joue quitte la theorie,
+ * combien de fois dans vos parties) et le coup theorique preconise, jouable
+ * d'un clic.
+ */
+function TheoryGapBlock({
+  gap,
+  onPlay,
+  compact,
+}: {
+  gap: TheoryGap
+  onPlay?: (san: string) => void
+  compact?: boolean
+}) {
+  const text = compact ? 'text-[10px]' : 'text-[11px]'
+  const head = compact ? 'text-[9px]' : 'text-[10px]'
+  const [first, ...others] = gap.expected
+  const recurrent = gap.count >= 2
+  return (
+    <section
+      className={`space-y-1 rounded-lg border ${
+        recurrent ? 'border-amber-500/70 bg-amber-950/35' : 'border-amber-700/50 bg-amber-950/20'
+      } ${compact ? 'p-2' : 'p-2.5'}`}
+    >
+      <p className={`font-semibold tracking-wide text-amber-400 uppercase ${head}`}>
+        {recurrent ? 'Votre faiblesse récurrente' : gap.count === 1 ? 'Écart de théorie déjà commis' : 'Écart de théorie'}
+      </p>
+      <p className={`leading-snug text-amber-100 ${text}`}>
+        {gap.count > 0
+          ? `Dans ${gap.count} de vos parties, vous jouez ${gap.san} ici (${gap.losses} défaite${gap.losses > 1 ? 's' : ''}). C’est là que la ligne vous échappe.`
+          : `${gap.san} sort de la théorie répertoriée : à partir d’ici, plus de repère.`}
+      </p>
+      {first ? (
+        <p className={`leading-snug text-emerald-200 ${text}`}>
+          Coup théorique préconisé : <span className="font-mono font-bold text-emerald-100">{first.san}</span>
+          {first.name && <span className="text-emerald-200/80"> — {frName(first.name)}</span>}
+          {first.games > 0 && (
+            <span className="text-emerald-300/70"> · {first.games.toLocaleString('fr-FR')} parties Lichess</span>
+          )}
+        </p>
+      ) : (
+        <p className={`text-amber-200/80 ${text}`}>La théorie répertoriée s’arrête juste avant : ce coup n’est pas forcément fautif.</p>
+      )}
+      {others.length > 0 && (
+        <p className={`text-slate-400 ${text}`}>
+          Autres coups théoriques :{' '}
+          {others.map((move, index) => (
+            <span key={move.san}>
+              {index > 0 && ', '}
+              <span className="font-mono text-slate-200">{move.san}</span>
+              {move.name && <span className="text-slate-500"> ({frName(move.name)})</span>}
+            </span>
+          ))}
+        </p>
+      )}
+      {onPlay && gap.expected.length > 0 && (
+        <div className="flex flex-wrap gap-1 pt-0.5">
+          {gap.expected.slice(0, 3).map((move) => (
+            <button
+              key={move.san}
+              onClick={() => onPlay(move.san)}
+              className={`rounded-md border border-emerald-600/70 px-2 py-0.5 font-mono text-emerald-100 hover:bg-emerald-900/40 ${text}`}
+              title={`Remplacer ${gap.san} par ${move.san} sur l’échiquier`}
+            >
+              ▶ {move.san}
+            </button>
+          ))}
+        </div>
+      )}
+    </section>
+  )
+}
 
 /** Pourquoi le coup est fautif : bascule d'evaluation, concessions, meilleur coup, punition. */
 function FaultBlock({ fault, compact }: { fault: FaultExplanation; compact?: boolean }) {
@@ -124,6 +199,10 @@ interface Props {
   fault?: FaultExplanation | null
   /** Requête prête pour une explication par IA générative, quand le coup est fautif. */
   aiPrompt?: string | null
+  /** Le coup affiché quitte la théorie : où est le problème et quel coup théorique jouer. */
+  theoryGap?: TheoryGap | null
+  /** Joue un coup théorique à la place de l'écart. */
+  onPlayTheory?: (san: string) => void
 }
 
 /** « Pourquoi ce coup ? » — commentaire théorique et analyse de la position. */
@@ -136,6 +215,8 @@ export default function ExplainPanel({
   verdict,
   fault,
   aiPrompt,
+  theoryGap,
+  onPlayTheory,
 }: Props) {
   if (!explanation) {
     return (
@@ -162,6 +243,7 @@ export default function ExplainPanel({
           )}
         </p>
 
+        {theoryGap && <TheoryGapBlock gap={theoryGap} onPlay={onPlayTheory} compact />}
         {verdict && <Verdict verdict={verdict} compact />}
         {fault && <FaultBlock fault={fault} compact />}
         {fault && aiPrompt && <AiExplain prompt={aiPrompt} compact />}
@@ -227,6 +309,7 @@ export default function ExplainPanel({
         )}
       </p>
 
+      {theoryGap && <TheoryGapBlock gap={theoryGap} onPlay={onPlayTheory} />}
       {verdict && <Verdict verdict={verdict} />}
       {fault && <FaultBlock fault={fault} />}
       {fault && aiPrompt && <AiExplain prompt={aiPrompt} />}

@@ -3,6 +3,7 @@ import type { ImportedGame, TreeNode } from '../lib/types'
 import type { GameNodeStats } from '../lib/games'
 import { nearestNamed } from '../lib/tree'
 import { frName } from '../lib/frenchNames'
+import { ownDeviation, resultFor } from '../lib/deviations'
 import OpeningName from './OpeningName'
 
 interface Props {
@@ -73,28 +74,6 @@ const finish = (row: Omit<Row, 'score' | 'impact' | 'priority'>): Row => {
   const score = row.total > 0 ? (row.wins + row.draws / 2) / row.total : 0
   const impact = row.total * Math.max(0, 0.5 - score)
   return { ...row, score, impact, priority: impact + DEVIATION_WEIGHT * row.deviations }
-}
-
-/** Resultat de la partie pour le joueur. */
-function resultFor(game: ImportedGame): 'win' | 'draw' | 'loss' | null {
-  if (game.result === '1/2-1/2') return 'draw'
-  if (!game.color) return null
-  if (game.result === '1-0') return game.color === 'white' ? 'win' : 'loss'
-  if (game.result === '0-1') return game.color === 'black' ? 'win' : 'loss'
-  return null
-}
-
-/**
- * Le premier ecart de theorie de la partie, s'il est le fait du joueur :
- * position ou la theorie s'arrete et coup joue a la place.
- */
-function ownDeviation(game: ImportedGame): { nodeId: string; san: string } | null {
-  if (!game.color) return null
-  const matched = game.nodeId ? game.nodeId.split(' ').length : 0
-  if (matched >= game.sans.length) return null
-  const mover = matched % 2 === 0 ? 'white' : 'black'
-  if (mover !== game.color) return null
-  return { nodeId: game.nodeId ?? '', san: game.sans[matched] }
 }
 
 export default function WeakSpots({ games, stats, byId, onSelect }: Props) {
