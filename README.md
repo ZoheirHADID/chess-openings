@@ -15,7 +15,9 @@ les résultats réels, et analyse **Stockfish** dès que la partie sort de la th
 - Les destinations légales s'affichent en points : **vert** si le coup existe dans l'arbre théorique,
   gris sinon. L'arbre suit chaque coup joué et recentre la branche correspondante.
 - Un coup hors répertoire ne bloque rien : la ligne se poursuit et vient se **greffer en pointillés ambre**
-  sur le dernier nœud théorique atteint, avec un bouton pour revenir dans la théorie.
+  sur le dernier nœud théorique atteint, avec un bouton pour revenir dans la théorie. Le coup hors
+  théorie affiché sur l'échiquier est surligné en **rouge** dans l'arbre (bleu pour un coup de théorie),
+  et reste toujours visible, même au-delà de « + N autres coups ».
 - Sélecteur de promotion, retournement de l'échiquier, boutons début / reculer / avancer, flèches `←` `→`.
 
 ### Visualisation en branches

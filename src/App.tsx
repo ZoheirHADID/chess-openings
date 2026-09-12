@@ -178,9 +178,12 @@ export default function App() {
       const existing = siblings.find((n) => n.san === san)
       let node: TreeNode
       if (existing) {
-        // On clone la branche traversee pour ne pas modifier le cache des parties
+        // On clone la branche traversee pour ne pas modifier le cache des parties,
+        // et on la place en tete : le coup affiche ne doit jamais etre masque
+        // derriere « + N autres coups »
         node = { ...existing, children: [...existing.children], parent }
-        siblings[siblings.indexOf(existing)] = node
+        siblings.splice(siblings.indexOf(existing), 1)
+        siblings.unshift(node)
       } else {
         node = { id, san, ply, count: 0, children: [], parent, virtual: true }
         siblings.unshift(node)

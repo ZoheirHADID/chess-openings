@@ -151,6 +151,10 @@ export default function OpeningTree({
 
       const limit = showAll.has(node.id) ? children.length : DEFAULT_CHILDREN
       const shown = children.slice(0, limit)
+      // Le chemin selectionne (dont le coup affiche sur l'echiquier) reste visible
+      for (const child of children.slice(limit)) {
+        if (pathIds.has(child.id) || child.id === selectedId) shown.push(child)
+      }
       total += shown.length
       if (autoOpen) autoBudget -= shown.length
       return {
@@ -163,7 +167,7 @@ export default function OpeningTree({
     const h = hierarchy(build(root), (d) => d.children)
     d3tree<Datum>().nodeSize([ROW, COL])(h)
     return h as HierarchyPointNode<Datum>
-  }, [root, expanded, collapsed, filter, showAll, inRepertoire, grafts])
+  }, [root, expanded, collapsed, filter, showAll, inRepertoire, grafts, pathIds, selectedId])
 
   const nodes = useMemo(() => layout.descendants(), [layout])
   const links = useMemo(() => layout.links(), [layout])
@@ -426,10 +430,22 @@ export default function OpeningTree({
                   height={NODE_H}
                   rx={9}
                   className="cursor-pointer"
-                  fill={selected ? '#1d4ed8' : node.virtual ? '#292116' : onPath ? '#1e293b' : '#0f172a'}
+                  fill={
+                    selected
+                      ? node.virtual
+                        ? '#991b1b'
+                        : '#1d4ed8'
+                      : node.virtual
+                        ? '#292116'
+                        : onPath
+                          ? '#1e293b'
+                          : '#0f172a'
+                  }
                   stroke={
                     selected
-                      ? '#93c5fd'
+                      ? node.virtual
+                        ? '#fca5a5'
+                        : '#93c5fd'
                       : focused
                         ? '#38bdf8'
                         : node.virtual
