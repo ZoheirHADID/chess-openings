@@ -17,6 +17,7 @@ import { positionFromSans } from './lib/chess'
 import { totalOf, useMoveStats } from './lib/moveStats'
 import { explainMove } from './lib/explain'
 import { describeRefutation } from './lib/refutation'
+import { pickTheoryReply, type TrainingScore } from './lib/training'
 import { videoLinkFor } from './data/openingVideos'
 import { buildTree, followSans, nearestNamed, type TreeIndex } from './lib/tree'
 import { buildBranchStatus, loadProgress, markExplored, saveProgress, setStatus } from './lib/progress'
@@ -80,6 +81,10 @@ export default function App() {
   const [engineOn, setEngineOn] = useState(() => localStorage.getItem('chess-openings:engine') === 'on')
   const [storageWarning, setStorageWarning] = useState(false)
   const [miniBoardOpen, setMiniBoardOpen] = useState(true)
+  /** Mode « jouer la théorie » : l'ordinateur répond au hasard dans l'arbre. */
+  const [training, setTraining] = useState<{ color: 'white' | 'black' } | null>(null)
+  const [trainScore, setTrainScore] = useState<TrainingScore>({ found: 0, missed: 0 })
+  const [hintOpen, setHintOpen] = useState(false)
   const [dropping, setDropping] = useState(false)
   const isDesktop = useMediaQuery('(min-width: 1024px)')
   const dropDepth = useRef(0)
@@ -225,6 +230,11 @@ export default function App() {
   )
   /** Coup suivant de la partie chargee, s'il en reste. */
   const nextGameMove = gameLine && line.length < gameLine.length ? gameLine[line.length] : null
+  /** Entrainement : a qui le trait ? */
+  const playerTurn = training !== null && position.turn === (training.color === 'white' ? 'w' : 'b')
+  const computerTurn = training !== null && !playerTurn
+  /** Entrainement : la theorie repertoriee s'arrete ici. */
+  const theoryEnded = training !== null && !outOfBook && line.length > 0 && (anchor?.children.length ?? 0) === 0
   /** Video francophone pour l'ouverture courante. */
   const video = useMemo(() => videoLinkFor(named?.family, named?.name), [named])
 
@@ -265,7 +275,10 @@ export default function App() {
     [position.fen, bestLine, verdict],
   )
 
-  // La branche parcourue est memorisee et depliee automatiquement
+  // La branche parcourue est memorisee et depliee automatiquement. En mode
+  // entrainement, les suites du noeud courant restent repliees pendant le tour
+  // du joueur : l'arbre ne souffle pas la reponse.
+  const hideReplies = training !== null && playerTurn && !outOfBook
   useEffect(() => {
     if (!anchorId) return
     setProgress((prev) => markExplored(prev, anchorId) ?? prev)
@@ -273,10 +286,38 @@ export default function App() {
       const next = new Set(prev)
       const parts = anchorId.split(' ')
       for (let i = 0; i < parts.length; i++) next.add(parts.slice(0, i).join(' '))
-      next.add(anchorId)
+      if (!hideReplies) next.add(anchorId)
       return next
     })
-  }, [anchorId])
+  }, [anchorId, hideReplies])
+
+  // Entrainement : l'ordinateur repond par un coup theorique tire au sort
+  useEffect(() => {
+    if (!training || !anchor || outOfBook || !computerTurn || anchor.children.length === 0) return
+    const expectedId = anchorId
+    const timer = setTimeout(() => {
+      const reply = pickTheoryReply(anchor.children)
+      if (!reply) return
+      setLine((prev) => (prev.join(' ') === expectedId ? [...prev, reply.san] : prev))
+    }, 600)
+    return () => clearTimeout(timer)
+  }, [training, anchor, anchorId, outOfBook, computerTurn])
+
+  // L'indice se referme des que la position change
+  useEffect(() => setHintOpen(false), [anchorId])
+
+  const startTraining = useCallback(
+    (color: 'white' | 'black') => {
+      setTraining({ color })
+      setTrainScore({ found: 0, missed: 0 })
+      setOrientation(color)
+      setActiveGame(null)
+      setLine([])
+      if (!isDesktop) setMobileView('board')
+    },
+    [isDesktop],
+  )
+  const stopTraining = useCallback(() => setTraining(null), [])
 
   /** Positionne la ligne sur un chemin SAN complet (theorique ou libre). */
   const selectPath = useCallback(
@@ -287,10 +328,17 @@ export default function App() {
     [isDesktop],
   )
 
-  /** Joue un coup depuis la position courante. */
-  const playMove = useCallback((san: string) => {
-    setLine((prev) => [...prev, san])
-  }, [])
+  /** Joue un coup depuis la position courante (compte les reponses en entrainement). */
+  const playMove = useCallback(
+    (san: string) => {
+      if (training && playerTurn && !outOfBook) {
+        const known = knownSans.has(san)
+        setTrainScore((score) => (known ? { ...score, found: score.found + 1 } : { ...score, missed: score.missed + 1 }))
+      }
+      setLine((prev) => [...prev, san])
+    },
+    [training, playerTurn, outOfBook, knownSans],
+  )
 
   const goToPly = useCallback((ply: number) => setLine((prev) => prev.slice(0, ply)), [])
 
@@ -484,9 +532,15 @@ export default function App() {
         </button>
         <button
           onClick={() => forwardMove && playMove(forwardMove)}
-          disabled={!forwardMove}
+          disabled={!forwardMove || hideReplies}
           className="rounded-lg border border-slate-700 px-2.5 py-1.5 text-xs text-slate-300 hover:bg-slate-800 disabled:opacity-30"
-          title={nextGameMove ? 'Coup suivant de la partie (→)' : 'Avancer dans la variante principale (→)'}
+          title={
+            hideReplies
+              ? 'À vous de trouver le coup théorique'
+              : nextGameMove
+                ? 'Coup suivant de la partie (→)'
+                : 'Avancer dans la variante principale (→)'
+          }
         >
           ▶
         </button>
@@ -519,6 +573,79 @@ export default function App() {
           ⇅
         </button>
       </div>
+
+      {training && (
+        <div
+          className={`space-y-1.5 rounded-lg border border-indigo-700/60 bg-indigo-950/30 px-2.5 py-2 text-[11px] text-indigo-100 ${
+            flush ? 'mx-3' : ''
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            <span className="truncate font-semibold">
+              🤖 Jouer la théorie · vous avez les {training.color === 'white' ? 'blancs' : 'noirs'}
+            </span>
+            <span className="ml-auto shrink-0 tabular-nums text-indigo-300" title="Coups théoriques trouvés · coups hors théorie">
+              <span className="text-emerald-300">{trainScore.found} ✓</span> · <span className="text-rose-300">{trainScore.missed} ✗</span>
+            </span>
+          </div>
+          <p className="text-indigo-200/90">
+            {outOfBook
+              ? `Hors théorie. Coups attendus : ${anchor.children.map((c) => c.san).join(', ')}.`
+              : theoryEnded
+                ? `Fin de la théorie répertoriée : ${named?.name ?? 'ligne sans nom'}. Bravo, nouvelle partie ?`
+                : computerTurn
+                  ? 'L’ordinateur choisit une variante…'
+                  : `À vous : trouvez un coup théorique (${anchor.children.length} possible${anchor.children.length > 1 ? 's' : ''}).`}
+          </p>
+          {hintOpen && !outOfBook && anchor.children.length > 0 && (
+            <ul className="space-y-0.5 text-indigo-200/80">
+              {anchor.children.slice(0, 6).map((child) => {
+                const label = child.variation ?? child.name ?? nearestNamed(child)?.name
+                return (
+                  <li key={child.id}>
+                    <span className="font-mono text-slate-100">{child.san}</span>
+                    {label && <span className="text-indigo-300/80"> · {label}</span>}
+                  </li>
+                )
+              })}
+              {anchor.children.length > 6 && <li>… et {anchor.children.length - 6} autre(s)</li>}
+            </ul>
+          )}
+          <div className="flex flex-wrap gap-1">
+            {outOfBook && (
+              <button
+                onClick={() => setLine((prev) => prev.slice(0, matched))}
+                className="rounded-md border border-amber-600/70 px-2 py-1 text-amber-200 hover:bg-amber-900/40"
+              >
+                ↶ Reprendre
+              </button>
+            )}
+            {playerTurn && !outOfBook && !theoryEnded && (
+              <button
+                onClick={() => setHintOpen((open) => !open)}
+                className="rounded-md border border-indigo-600/70 px-2 py-1 hover:bg-indigo-900/40"
+              >
+                💡 {hintOpen ? 'Masquer' : 'Indice'}
+              </button>
+            )}
+            <button
+              onClick={() => setLine([])}
+              className="rounded-md border border-indigo-600/70 px-2 py-1 hover:bg-indigo-900/40"
+            >
+              🔁 Nouvelle partie
+            </button>
+            <button
+              onClick={() => startTraining(training.color === 'white' ? 'black' : 'white')}
+              className="rounded-md border border-indigo-600/70 px-2 py-1 hover:bg-indigo-900/40"
+            >
+              ⇅ Changer de couleur
+            </button>
+            <button onClick={stopTraining} className="ml-auto rounded-md px-2 py-1 text-indigo-300 hover:text-white">
+              ✕ Quitter
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="flex items-center gap-2">
         <div className="min-w-0 flex-1">
@@ -702,7 +829,7 @@ export default function App() {
               label: '▶',
               title: nextGameMove ? 'Coup suivant de la partie' : 'Variante principale',
               onClick: () => forwardMove && playMove(forwardMove),
-              disabled: !forwardMove,
+              disabled: !forwardMove || hideReplies,
             },
             {
               label: '⇅',
@@ -729,6 +856,25 @@ export default function App() {
           ))}
           </div>
         </div>
+
+        {training && (
+          <div className="flex items-center gap-2 rounded bg-indigo-950/40 px-1.5 py-0.5 text-[10px] text-indigo-200">
+            <span className="truncate">
+              🤖 Théorie ·{' '}
+              {outOfBook
+                ? 'hors théorie'
+                : theoryEnded
+                  ? 'fin de la théorie'
+                  : computerTurn
+                    ? 'l’ordinateur joue…'
+                    : 'à vous de jouer'}{' '}
+              · {trainScore.found} ✓ {trainScore.missed} ✗
+            </span>
+            <button onClick={() => setMobileView('board')} className="ml-auto shrink-0 text-indigo-300">
+              Échiquier ▸
+            </button>
+          </div>
+        )}
 
         {activeGame && (
           <div className="flex items-center gap-2 rounded bg-purple-950/30 px-1.5 py-0.5 text-[10px] text-purple-200">
@@ -770,7 +916,7 @@ export default function App() {
       root={root}
       expanded={expanded}
       selectedId={selectedId}
-      focusId={recommendedId}
+      focusId={hideReplies ? null : recommendedId}
       pathIds={pathIds}
       branchStatus={branchStatus}
       ownStatus={ownStatus}
@@ -876,6 +1022,22 @@ export default function App() {
               </button>
             ))}
           </div>
+          <button
+            onClick={() => (training ? stopTraining() : startTraining(sideFilter === 'all' ? orientation : sideFilter))}
+            title={
+              training
+                ? 'Quitter le mode « jouer la théorie »'
+                : 'Jouer la théorie contre l’ordinateur : il répond par une variante tirée au sort'
+            }
+            className={`shrink-0 rounded-lg border px-2 py-1 text-[11px] font-medium whitespace-nowrap transition-colors sm:text-xs ${
+              training
+                ? 'border-indigo-500 bg-indigo-600 text-white'
+                : 'border-slate-700 text-slate-300 hover:bg-slate-800'
+            }`}
+          >
+            <span className="sm:hidden">🤖</span>
+            <span className="hidden sm:inline">🤖 Jouer la théorie</span>
+          </button>
         </div>
       </header>
 

@@ -104,6 +104,20 @@ Un sélecteur en en-tête choisit ce que la couleur traduit :
 - Barre de progression, liste du répertoire, export JSON, réinitialisation. Tout est conservé en local
   (`localStorage`), sans compte ni serveur.
 
+### Jouer la théorie contre l'ordinateur
+- Le bouton **🤖 Jouer la théorie** de l'en-tête lance une partie d'entraînement : vous jouez la couleur
+  de l'échiquier (ou celle du filtre de couleur), l'ordinateur répond par **un coup de l'arbre tiré au
+  sort**, pondéré par la richesse de la branche (les grandes lignes reviennent souvent, les lignes rares
+  finissent par sortir). À force de parties, toutes les ouvertures défilent.
+- Toute l'interface reste active : le nom de l'ouverture et son code ECO se mettent à jour sous
+  l'échiquier à chaque coup, l'arbre suit la partie, le moteur et les explications restent disponibles.
+- Pendant votre tour, l'arbre **ne déplie pas les suites** du nœud courant et n'étoile pas le coup le plus
+  joué, pour ne pas souffler la réponse ; le bouton `💡 Indice` liste les coups théoriques possibles avec
+  le nom de leur variante.
+- Un coup hors théorie est compté ✗ et les coups attendus sont affichés, avec `↶ Reprendre` pour revenir
+  au dernier nœud théorique ; un coup théorique est compté ✓. Quand la théorie répertoriée s'arrête, la
+  partie est gagnée : `🔁 Nouvelle partie` relance, `⇅ Changer de couleur` inverse les rôles.
+
 ### Import de parties (Lichess et Chess.com)
 - **Lichess** : pseudo + API publique.
 - **Chess.com** : pseudo + archives mensuelles publiques ; l'import **remonte tout l'historique**, du mois
