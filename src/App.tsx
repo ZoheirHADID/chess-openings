@@ -16,6 +16,7 @@ import { useEngine } from './lib/useEngine'
 import { positionFromSans } from './lib/chess'
 import { totalOf, useMoveStats } from './lib/moveStats'
 import { explainMove } from './lib/explain'
+import { describeRefutation } from './lib/refutation'
 import { videoLinkFor } from './data/openingVideos'
 import { buildTree, followSans, nearestNamed, type TreeIndex } from './lib/tree'
 import { buildBranchStatus, loadProgress, markExplored, saveProgress, setStatus } from './lib/progress'
@@ -230,6 +231,12 @@ export default function App() {
   /** Meilleur coup du moteur pour la position affichee. */
   const bestLine = engineSnapshot?.fen === position.fen ? engineSnapshot.lines[0] : undefined
 
+  /** Comment l'adversaire punit une faute : d'apres la meilleure reponse du moteur. */
+  const refutation = useMemo(
+    () => describeRefutation(position.fen, bestLine, verdict),
+    [position.fen, bestLine, verdict],
+  )
+
   /** Position precedente : le moteur l'evalue aussi, pour juger le coup joue. */
   const parentFen = useMemo(
     () => (line.length > 0 ? positionFromSans(line.slice(0, -1)).fen : null),
@@ -428,6 +435,7 @@ export default function App() {
       outOfBook={outOfBook}
       compact
       verdict={verdict}
+      refutation={refutation}
     />
   )
 

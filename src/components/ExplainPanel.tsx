@@ -1,6 +1,7 @@
 import type { MoveExplanation } from '../lib/explain'
 import { QUALITY_BADGE, type MoveVerdict } from '../lib/engine'
 import QualityGlyph from './QualityGlyph'
+import type { Refutation } from '../lib/refutation'
 
 const VERDICT_STYLE: Record<MoveVerdict['quality'], { bg: string; text: string }> = {
   brilliant: { bg: 'bg-teal-500/20 border-teal-500/60', text: 'text-teal-300' },
@@ -16,6 +17,30 @@ const VERDICT_STYLE: Record<MoveVerdict['quality'], { bg: string; text: string }
 }
 
 const NO_BEST_SHOWN = new Set<MoveVerdict['quality']>(['brilliant', 'great', 'best', 'book'])
+
+/** Comment l'adversaire exploite la faute : variante du moteur et consequences. */
+function Punishment({ refutation, compact }: { refutation: Refutation; compact?: boolean }) {
+  const points = compact ? refutation.points.slice(0, 3) : refutation.points
+  return (
+    <section
+      className={`rounded-lg border border-rose-800/60 bg-rose-950/20 ${compact ? 'p-2' : 'p-2.5'}`}
+      aria-label="Comment l’adversaire en profite"
+    >
+      <p className={`mb-1 font-semibold tracking-wide text-rose-400 uppercase ${compact ? 'text-[9px]' : 'text-[10px]'}`}>
+        Comment l’adversaire en profite
+      </p>
+      <p className={`font-mono text-slate-200 ${compact ? 'text-[10px]' : 'text-[11px]'}`}>{refutation.line}</p>
+      <ul className="mt-1 space-y-0.5">
+        {points.map((point) => (
+          <li key={point} className={`flex gap-1.5 leading-snug text-rose-100/90 ${compact ? 'text-[10px]' : 'text-[11px]'}`}>
+            <span className="mt-1.5 h-0.5 w-0.5 shrink-0 rounded-full bg-rose-400" />
+            {point}
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
 
 /** Bandeau de verdict du moteur, avec le coup qu'il aurait joue. */
 function Verdict({ verdict, compact }: { verdict: MoveVerdict; compact?: boolean }) {
@@ -56,10 +81,12 @@ interface Props {
   compact?: boolean
   /** Jugement du moteur sur ce coup, quand il est activé. */
   verdict?: MoveVerdict | null
+  /** Punition de la faute par l'adversaire (imprécision, erreur, gaffe). */
+  refutation?: Refutation | null
 }
 
 /** « Pourquoi ce coup ? » — commentaire théorique et analyse de la position. */
-export default function ExplainPanel({ explanation, openingName, eco, outOfBook, compact, verdict }: Props) {
+export default function ExplainPanel({ explanation, openingName, eco, outOfBook, compact, verdict, refutation }: Props) {
   if (!explanation) {
     return (
       <p className="text-sm text-slate-400">
@@ -85,6 +112,7 @@ export default function ExplainPanel({ explanation, openingName, eco, outOfBook,
         </p>
 
         {verdict && <Verdict verdict={verdict} compact />}
+        {refutation && <Punishment refutation={refutation} compact />}
 
         {explanation.note && (
           <p className="border-l-2 border-emerald-600/70 pl-2 text-[11px] leading-relaxed text-slate-200">
@@ -148,6 +176,7 @@ export default function ExplainPanel({ explanation, openingName, eco, outOfBook,
       </p>
 
       {verdict && <Verdict verdict={verdict} />}
+      {refutation && <Punishment refutation={refutation} />}
 
       {explanation.note && (
         <section className="rounded-lg border border-emerald-800/50 bg-emerald-950/20 p-2.5">

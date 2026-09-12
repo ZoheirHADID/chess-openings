@@ -53,6 +53,11 @@ les résultats réels, et analyse **Stockfish** dès que la partie sort de la th
     L'évaluation de la position précédente est calculée en tâche de fond pour permettre cette
     comparaison, et le verdict n'est rendu qu'à partir d'une profondeur suffisante (10 demi-coups) pour ne
     pas juger avant que le moteur ait vu la réfutation.
+  - *Comment l'adversaire en profite* : pour une imprécision, une erreur ou une gaffe, la meilleure
+    variante du moteur est rejouée et traduite en clair : mat forcé, capture (avec échec ou non),
+    fourchette ou pièce menacée sans défense suffisante, matériel perdu au bout de la variante (pion,
+    qualité, pièce, dame), ou simple perte d'initiative chiffrée en pions, avec un rappel du coup qu'il
+    fallait jouer.
 - Hors de ces lignes, une **analyse automatique de la position** repère les motifs classiques : occupation
   et contrôle du centre, développement, roque, fianchetto, prophylaxie (…a6 contre Bb5), clouages et
   enfilades, pièces attaquées, gain d'espace.
