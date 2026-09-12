@@ -191,10 +191,11 @@ export default function OpeningTree({
   }, [nodes])
 
   // Recentrage sur la selection
+  /** Centre la vue ; renvoie false si le noeud n'est pas (encore) affiche ou la vue pas encore mesuree. */
   const centerOn = useCallback(
-    (id: string, zoom?: number, zoomIn = false, alsoId?: string) => {
+    (id: string, zoom?: number, zoomIn = false, alsoId?: string): boolean => {
       const target = nodes.find((n) => n.data.node.id === id)
-      if (!target || size.width === 0) return
+      if (!target || size.width === 0) return false
       // Second noeud (coup suivant recommande) : la vue se cale entre les deux,
       // le dernier coup joue et sa suite restent visibles ensemble
       const also = alsoId ? nodes.find((n) => n.data.node.id === alsoId) : undefined
@@ -211,6 +212,7 @@ export default function OpeningTree({
           y: size.height / 2 - cy * k,
         }
       })
+      return true
     },
     [nodes, size.width, size.height],
   )
@@ -241,10 +243,16 @@ export default function OpeningTree({
     const key = `${selectedId}>${target}`
     if (key === lastCentered.current) return
     const selectionChanged = !lastCentered.current.startsWith(`${selectedId}>`)
-    lastCentered.current = key
     if (selectionChanged) userMoved.current = false
-    else if (userMoved.current) return
-    centerOn(selectedId, undefined, true, focusVisible ? focusId : undefined)
+    else if (userMoved.current) {
+      lastCentered.current = key
+      return
+    }
+    // Le noeud vise (coup hors theorie greffe, branche depliee au rendu suivant,
+    // vue Arbre encore masquee sur mobile) peut n'etre affiche qu'un peu plus
+    // tard : on ne marque le centrage comme fait que s'il a reellement eu lieu.
+    const done = centerOn(selectedId, undefined, true, focusVisible ? focusId : undefined)
+    lastCentered.current = done ? key : ''
   }, [selectedId, focusId, nodes, centerOn])
 
   // Pan / zoom
