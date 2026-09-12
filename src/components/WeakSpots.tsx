@@ -390,7 +390,7 @@ export default function WeakSpots({ games, stats, byId, onSelect }: Props) {
                       <span className="shrink-0 text-[11px] font-semibold text-amber-300">×{dev.count}</span>
                     </span>
                     <span className="mt-0.5 flex items-baseline gap-2 text-[10px] text-slate-500">
-                      <span className="truncate">
+                      <span className="min-w-0 truncate">
                         {dev.expected.length > 0 ? `Théorie : ${dev.expected.join(', ')}` : 'Fin de la théorie répertoriée'}
                       </span>
                       <span className="ml-auto shrink-0">

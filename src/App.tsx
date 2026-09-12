@@ -1165,7 +1165,7 @@ export default function App() {
               <div className="min-h-0 flex-1">{treeBlock}</div>
             </div>
             {mobileView === 'board' && (
-              <div className="h-full space-y-4 overflow-y-auto pt-2 pb-20">
+              <div className="h-full space-y-4 overflow-x-hidden overflow-y-auto pt-2 pb-20">
                 {renderBoardBlock(true)}
                 <div className="px-3">{explorerBlock}</div>
               </div>
@@ -1173,10 +1173,10 @@ export default function App() {
             {mobileView === 'study' && (
               <div className="flex h-full flex-col">
                 <div className="shrink-0 border-b border-slate-800">{miniBoardBlock}</div>
-                <div className="min-h-0 flex-1 overflow-y-auto p-3 pb-20">{studyBlock}</div>
+                <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto p-3 pb-20">{studyBlock}</div>
               </div>
             )}
-            {mobileView === 'games' && <div className="h-full overflow-y-auto p-3 pb-20">{gamesBlock}</div>}
+            {mobileView === 'games' && <div className="h-full overflow-x-hidden overflow-y-auto p-3 pb-20">{gamesBlock}</div>}
           </section>
         )}
       </main>
