@@ -111,8 +111,10 @@ Un sélecteur en en-tête choisit ce que la couleur traduit :
 - **« À travailler en priorité »** : les ouvertures à apprendre pour améliorer statistiquement votre score,
   classées par **priorité** = coût (parties × écart sous 50 %) + récurrence de vos propres **écarts de
   théorie** (une demi-partie par écart) ; tris alternatifs par coût, défaites ou score, regroupement par
-  ouverture ou par branche, filtre par couleur, clic pour y aller directement. Le bandeau résume la ligne
-  prioritaire et votre erreur la plus fréquente.
+  ouverture ou par branche, filtre par couleur. Un clic mène **directement à la position où votre écart
+  de théorie est le plus coûteux et le plus fréquent** dans cette ligne (coup joué, occurrences et coups
+  théoriques attendus affichés sur la ligne), à défaut au nœud de l'ouverture. Le bandeau résume la ligne
+  prioritaire et cet écart.
 - **« Erreurs récurrentes »** : les coups par lesquels vous quittez la théorie à répétition (position, coup
   joué, coups théoriques attendus, nombre d'occurrences et score obtenu ensuite). Un clic ouvre la position
   avec les coups attendus dépliés, d'où l'on peut lancer « Jouer la théorie » pour s'entraîner.

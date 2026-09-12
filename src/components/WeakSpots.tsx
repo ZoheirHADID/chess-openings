@@ -33,6 +33,8 @@ interface Row {
   deviations: number
   /** Coût + récurrence des écarts : ce qu'apprendre la ligne peut rapporter. */
   priority: number
+  /** Ecart de theorie le plus couteux et le plus frequent de la ligne : cible du clic. */
+  focus?: Deviation
 }
 
 /** Ecart de theorie commis par le joueur, agrege sur toutes ses parties. */
@@ -51,7 +53,13 @@ interface Deviation {
   draws: number
   losses: number
   score: number
+  /** Points perdus apres cet ecart (defaites + demi-nulles). */
+  cost: number
 }
+
+/** L'ecart qui coute le plus de points, puis le plus frequent. */
+const costliest = (list: Deviation[]): Deviation | undefined =>
+  [...list].sort((a, b) => b.cost - a.cost || b.count - a.count || a.score - b.score)[0]
 
 /** En dessous, l'echantillon ne veut rien dire. */
 const MIN_GAMES = 5
@@ -95,7 +103,7 @@ export default function WeakSpots({ games, stats, byId, onSelect }: Props) {
   const selected = useMemo(() => (side === 'all' ? games : games.filter((g) => g.color === side)), [games, side])
 
   /** Ecarts de theorie du joueur, regroupes par position et coup. */
-  const deviations = useMemo(() => {
+  const allDeviations = useMemo(() => {
     const byKey = new Map<string, Deviation>()
     for (const game of selected) {
       const dev = ownDeviation(game)
@@ -117,6 +125,7 @@ export default function WeakSpots({ games, stats, byId, onSelect }: Props) {
           draws: 0,
           losses: 0,
           score: 0,
+          cost: 0,
         }
         byKey.set(key, entry)
       }
@@ -126,10 +135,17 @@ export default function WeakSpots({ games, stats, byId, onSelect }: Props) {
       else if (res === 'draw') entry.draws++
       else if (res === 'loss') entry.losses++
     }
-    const list = [...byKey.values()].map((d) => ({ ...d, score: d.count > 0 ? (d.wins + d.draws / 2) / d.count : 0 }))
-    // Recurrence d'abord, puis gravite (score le plus bas)
-    return list.filter((d) => d.count >= 2).sort((a, b) => b.count - a.count || a.score - b.score)
+    return [...byKey.values()].map((d) => ({
+      ...d,
+      score: d.count > 0 ? (d.wins + d.draws / 2) / d.count : 0,
+      cost: d.losses + d.draws / 2,
+    }))
   }, [selected, byId])
+  /** Ecarts repetes, pour la liste « Erreurs recurrentes » : recurrence d'abord, puis gravite. */
+  const deviations = useMemo(
+    () => allDeviations.filter((d) => d.count >= 2).sort((a, b) => b.count - a.count || a.score - b.score),
+    [allDeviations],
+  )
 
   const rows = useMemo(() => {
     let list: Row[] = []
@@ -160,7 +176,14 @@ export default function WeakSpots({ games, stats, byId, onSelect }: Props) {
         else if (res === 'loss') row.losses++
         if (ownDeviation(game)) row.deviations++
       }
-      list = [...byOpening.values()].filter((r) => r.total >= MIN_GAMES).map(finish)
+      // Le clic mene a l'ecart le plus couteux de l'ouverture, pas seulement a son noeud nomme
+      list = [...byOpening.values()]
+        .filter((r) => r.total >= MIN_GAMES)
+        .map(finish)
+        .map((row) => {
+          const focus = costliest(allDeviations.filter((d) => d.opening === row.key))
+          return focus ? { ...row, focus, target: focus.nodeId } : row
+        })
     } else {
       // Regroupement par noeud : plus precis, mais uniquement sans filtre de couleur
       const deviationsByNode = new Map<string, number>()
@@ -180,8 +203,9 @@ export default function WeakSpots({ games, stats, byId, onSelect }: Props) {
         for (const [nodeId, count] of deviationsByNode) {
           if (nodeId === id || nodeId.startsWith(`${id} `)) deviationCount += count
         }
-        candidates.push(
-          finish({
+        const focus = costliest(allDeviations.filter((d) => d.nodeId === id || d.nodeId.startsWith(`${id} `)))
+        candidates.push({
+          ...finish({
             key: id,
             target: id,
             label: named?.name ?? id,
@@ -192,7 +216,9 @@ export default function WeakSpots({ games, stats, byId, onSelect }: Props) {
             losses: stat.losses,
             deviations: deviationCount,
           }),
-        )
+          focus,
+          target: focus ? focus.nodeId : id,
+        })
       }
       // On conserve la branche la plus profonde de chaque chemin equivalent
       candidates.sort((a, b) => b.key.length - a.key.length)
@@ -212,7 +238,7 @@ export default function WeakSpots({ games, stats, byId, onSelect }: Props) {
       score: (a, b) => a.score - b.score || b.total - a.total,
     }
     return list.sort(compare[sorting]).slice(0, 12)
-  }, [selected, stats, byId, grouping, sorting, side])
+  }, [selected, stats, byId, grouping, sorting, side, allDeviations])
 
   if (games.length === 0) return null
 
@@ -302,13 +328,23 @@ export default function WeakSpots({ games, stats, byId, onSelect }: Props) {
               {worst.deviations > 0 &&
                 `, et vous y quittez la théorie ${worst.deviations} fois de vous-même`}
               .
-              {topDeviation && (
+              {worst.focus ? (
                 <>
                   {' '}
-                  Erreur la plus fréquente : <strong>{topDeviation.san}</strong> après {topDeviation.opening} (
-                  {topDeviation.count} fois
-                  {topDeviation.expected.length > 0 && `, la théorie joue ${topDeviation.expected.join(', ')}`}).
+                  Un clic vous place là où vous quittez la théorie le plus cher : vous jouez{' '}
+                  <strong>{worst.focus.san}</strong> ({worst.focus.count} fois, {worst.focus.losses} défaite
+                  {worst.focus.losses > 1 ? 's' : ''})
+                  {worst.focus.expected.length > 0 && ` au lieu de ${worst.focus.expected.join(', ')}`}.
                 </>
+              ) : (
+                topDeviation && (
+                  <>
+                    {' '}
+                    Erreur la plus fréquente : <strong>{topDeviation.san}</strong> après {topDeviation.opening} (
+                    {topDeviation.count} fois
+                    {topDeviation.expected.length > 0 && `, la théorie joue ${topDeviation.expected.join(', ')}`}).
+                  </>
+                )
               )}
             </p>
           )}
@@ -321,6 +357,11 @@ export default function WeakSpots({ games, stats, byId, onSelect }: Props) {
                   <button
                     onClick={() => row.target && onSelect(row.target)}
                     disabled={!row.target}
+                    title={
+                      row.focus
+                        ? `Aller à la position où vous jouez ${row.focus.san} au lieu de la théorie`
+                        : 'Aller à cette ouverture'
+                    }
                     className="w-full rounded-lg border border-slate-700/70 bg-slate-900/50 px-2.5 py-1.5 text-left transition-colors hover:bg-slate-800 disabled:opacity-50"
                   >
                     <span className="flex items-center gap-2">
@@ -350,6 +391,16 @@ export default function WeakSpots({ games, stats, byId, onSelect }: Props) {
                         {sorting === 'priority' ? `priorité ${row.priority.toFixed(1)}` : `coût ${row.impact.toFixed(1)} pt`}
                       </span>
                     </span>
+                    {row.focus && (
+                      <span className="mt-0.5 flex min-w-0 items-baseline gap-1 text-[10px] text-amber-400/90">
+                        <span className="shrink-0">↳ écart le plus coûteux :</span>
+                        <span className="shrink-0 font-mono font-semibold text-amber-200">{row.focus.san}</span>
+                        <span className="shrink-0">×{row.focus.count}</span>
+                        {row.focus.expected.length > 0 && (
+                          <span className="min-w-0 truncate text-slate-500">théorie : {row.focus.expected.join(', ')}</span>
+                        )}
+                      </span>
+                    )}
                   </button>
                 </li>
               )
