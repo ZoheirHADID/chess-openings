@@ -34,9 +34,10 @@ les résultats réels, et analyse **Stockfish** dès que la partie sort de la th
   icône sobre `en` à côté du nom donne l'anglais d'origine au survol et le bascule d'une touche.
 - Recherche instantanée par nom d'ouverture (français ou anglais), famille ou code ECO — la sélection déplie
   et centre la branche.
-- À chaque sélection d'un chemin, la vue **zoome sur le coup suivant le plus joué** (bilan Lichess, à
-  défaut la variante principale), signalé par une étoile bleue. Si l'on a déplacé la vue entre-temps,
-  l'arrivée tardive des statistiques ne la recentre plus.
+- À chaque coup joué sur l'échiquier, partie ouverte ou chemin choisi, la vue **zoome sur la branche** :
+  le **dernier coup joué** est cadré avec le **coup suivant le plus joué** (bilan Lichess, à défaut la
+  variante principale), signalé par une étoile bleue, pour que les deux restent visibles. Si l'on a
+  déplacé la vue entre-temps, l'arrivée tardive des statistiques ne la recentre plus.
 
 ### Pourquoi ce coup ?
 - Une **pastille minuscule** se pose sur la case où la dernière pièce s'est arrêtée. Elle affiche la

@@ -192,17 +192,23 @@ export default function OpeningTree({
 
   // Recentrage sur la selection
   const centerOn = useCallback(
-    (id: string, zoom?: number, zoomIn = false) => {
+    (id: string, zoom?: number, zoomIn = false, alsoId?: string) => {
       const target = nodes.find((n) => n.data.node.id === id)
       if (!target || size.width === 0) return
+      // Second noeud (coup suivant recommande) : la vue se cale entre les deux,
+      // le dernier coup joue et sa suite restent visibles ensemble
+      const also = alsoId ? nodes.find((n) => n.data.node.id === alsoId) : undefined
+      const cx = also ? (target.y + also.y) / 2 : target.y
+      const cy = also ? (target.x + also.x) / 2 : target.x
       setAnimate(true)
       setTransform((t) => {
         // zoomIn : on rapproche la vue si elle etait en vue d'ensemble
         const k = zoom ?? (zoomIn ? Math.max(t.k, 1) : t.k)
+        const anchorX = also ? 0.5 : size.width < 700 ? 0.5 : 0.34
         return {
           k,
-          x: size.width * (size.width < 700 ? 0.5 : 0.34) - target.y * k,
-          y: size.height / 2 - target.x * k,
+          x: size.width * anchorX - cx * k,
+          y: size.height / 2 - cy * k,
         }
       })
     },
@@ -221,9 +227,11 @@ export default function OpeningTree({
   }, [selectedId])
 
   /**
-   * A chaque selection, la vue se centre sur le coup suivant recommande (des
-   * qu'il est affiche), sinon sur la selection. Si l'utilisateur a deplace la
-   * vue depuis, l'arrivee tardive du bilan Lichess ne la recentre plus.
+   * A chaque selection (coup joue sur l'echiquier, partie ouverte, clic dans
+   * l'arbre), la vue zoome sur la branche : le dernier coup joue est cadre
+   * avec le coup suivant recommande des qu'il est affiche, sinon seul. Si
+   * l'utilisateur a deplace la vue depuis, l'arrivee tardive du bilan Lichess
+   * ne la recentre plus.
    */
   const lastCentered = useRef('')
   const userMoved = useRef(false)
@@ -236,7 +244,7 @@ export default function OpeningTree({
     lastCentered.current = key
     if (selectionChanged) userMoved.current = false
     else if (userMoved.current) return
-    centerOn(target, undefined, focusVisible)
+    centerOn(selectedId, undefined, true, focusVisible ? focusId : undefined)
   }, [selectedId, focusId, nodes, centerOn])
 
   // Pan / zoom
