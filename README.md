@@ -35,7 +35,9 @@ les résultats réels, et analyse **Stockfish** dès que la partie sort de la th
   **classification du coup** dès que le moteur a tranché (`!!` brillant, `!` excellent, `★` meilleur,
   `✓` bon, `?!` imprécision, `?` erreur, `✗` occasion manquée, `??` gaffe). Un **livre marron** signale
   un coup de théorie, comme sur chess.com : il prime sur les bonnes notes, seules les fautes relevées par
-  le moteur restent visibles. Sans verdict, la pastille se réduit à un simple « i ». Au **survol** (ou d'une touche sur mobile), une bulle donne l'idée du coup sans
+  le moteur restent visibles. Le classement est **systématique** : moteur éteint, un coup de théorie
+  porte d'office le livre et un coup hors théorie est évalué en tâche de fond ; la pastille ne reste
+  « i » que le temps du calcul. Au **survol** (ou d'une touche sur mobile), une bulle donne l'idée du coup sans
   quitter l'échiquier.
 - Commentaire théorique rédigé pour les lignes principales (une centaine de coups des
   grandes ouvertures) et **plan directeur** de la famille (sicilienne, française, nimzo-indienne…).

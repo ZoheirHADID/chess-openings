@@ -201,6 +201,12 @@ class Engine {
     if (this.mode === 'side') {
       if (rank === 1) this.sideResult = { cp, mate, depth, bestSan: sans[0], second: this.sideResult?.second }
       else if (rank === 2 && this.sideResult) this.sideResult.second = { cp, mate }
+      // Des que l'evaluation est assez profonde pour juger un coup, elle est publiee
+      // sans attendre la fin de l'analyse : la pastille apparait plus tot.
+      if (rank === 1 && depth >= JUDGE_MIN_DEPTH && this.sideResult) {
+        this.history.set(this.analysingFen, { ...this.sideResult })
+        this.emit()
+      }
       return
     }
 

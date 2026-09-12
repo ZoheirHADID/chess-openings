@@ -246,13 +246,31 @@ export default function App() {
     () => (line.length > 0 ? positionFromSans(line.slice(0, -1)).fen : null),
     [line],
   )
+  /**
+   * Le dernier coup est toujours juge. Moteur allume, l'analyse principale evalue
+   * la position courante et seule la precedente est demandee en arriere-plan.
+   * Moteur eteint, un coup de theorie porte d'office la pastille « livre » ; un
+   * coup hors theorie est evalue en tache de fond (les deux positions).
+   */
   useEffect(() => {
-    if (engineOn && parentFen) void engine.requestEval(parentFen)
-  }, [engineOn, parentFen])
+    if (!parentFen) return
+    if (!engineOn && !outOfBook) return
+    void engine.requestEval(parentFen)
+    if (!engineOn) void engine.requestEval(position.fen)
+  }, [engineOn, parentFen, position.fen, outOfBook])
+
+  /** Signal d'arrivee des evaluations d'arriere-plan, meme moteur eteint. */
+  const [evalVersion, setEvalVersion] = useState(0)
+  useEffect(() => {
+    const unsubscribe = engine.subscribe((snapshot) => setEvalVersion(snapshot.version))
+    return () => {
+      unsubscribe()
+    }
+  }, [])
 
   /** Jugement du coup joue : comparaison des evaluations avant / apres. */
   const verdict = useMemo(() => {
-    if (!engineOn || !parentFen || line.length === 0) return null
+    if (!parentFen || line.length === 0) return null
     return judgeMove(
       engine.getEval(parentFen),
       engine.getEval(position.fen),
@@ -260,8 +278,8 @@ export default function App() {
       line[line.length - 1],
       { fenBefore: parentFen, inBook: !outOfBook },
     )
-    // engineSnapshot sert de signal : les evaluations arrivent au fil du calcul
-  }, [engineOn, parentFen, position.fen, line, outOfBook, engineSnapshot?.version])
+    // evalVersion sert de signal : les evaluations arrivent au fil du calcul
+  }, [parentFen, position.fen, line, outOfBook, evalVersion])
 
   /** Pastille du dernier coup : verdict du moteur, sinon « théorie » si le coup est dans l'arbre. */
   const moveBadge = useMemo(() => {
