@@ -1,24 +1,39 @@
 import type { MoveExplanation } from '../lib/explain'
-import type { MoveVerdict } from '../lib/engine'
+import { QUALITY_BADGE, type MoveVerdict } from '../lib/engine'
 
 const VERDICT_STYLE: Record<MoveVerdict['quality'], { bg: string; text: string }> = {
+  brilliant: { bg: 'bg-teal-500/20 border-teal-500/60', text: 'text-teal-300' },
+  great: { bg: 'bg-sky-600/20 border-sky-600/60', text: 'text-sky-300' },
   best: { bg: 'bg-emerald-600/20 border-emerald-600/60', text: 'text-emerald-300' },
+  excellent: { bg: 'bg-emerald-600/15 border-emerald-700/50', text: 'text-emerald-300' },
   good: { bg: 'bg-emerald-600/10 border-emerald-700/50', text: 'text-emerald-300' },
+  book: { bg: 'bg-amber-900/25 border-amber-800/60', text: 'text-amber-200' },
   inaccuracy: { bg: 'bg-amber-600/15 border-amber-600/60', text: 'text-amber-300' },
   mistake: { bg: 'bg-orange-600/20 border-orange-600/60', text: 'text-orange-300' },
+  miss: { bg: 'bg-rose-500/15 border-rose-500/60', text: 'text-rose-300' },
   blunder: { bg: 'bg-rose-600/20 border-rose-600/60', text: 'text-rose-300' },
 }
+
+const NO_BEST_SHOWN = new Set<MoveVerdict['quality']>(['brilliant', 'great', 'best'])
 
 /** Bandeau de verdict du moteur, avec le coup qu'il aurait joue. */
 function Verdict({ verdict, compact }: { verdict: MoveVerdict; compact?: boolean }) {
   const style = VERDICT_STYLE[verdict.quality]
-  const showBest = verdict.quality !== 'best' && verdict.best
+  const badge = QUALITY_BADGE[verdict.quality]
+  const showBest = !NO_BEST_SHOWN.has(verdict.quality) && verdict.best
   return (
     <p
       className={`flex flex-wrap items-baseline gap-x-2 gap-y-0.5 rounded-md border px-2 py-1 ${style.bg} ${
         compact ? 'text-[10px]' : 'text-[11px]'
       }`}
     >
+      <span
+        className="inline-flex h-3.5 min-w-3.5 items-center justify-center self-center rounded-full px-0.5 text-[8px] font-bold leading-none"
+        style={{ background: badge.color, color: badge.dark ? '#1f2937' : '#fff' }}
+        aria-hidden
+      >
+        {badge.glyph}
+      </span>
       <span className={`font-semibold ${style.text}`}>{verdict.label}</span>
       {verdict.loss >= 20 && <span className="text-slate-400">−{(verdict.loss / 100).toFixed(1)} pion</span>}
       {showBest && (

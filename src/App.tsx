@@ -11,7 +11,7 @@ import EnginePanel from './components/EnginePanel'
 import ExplainPanel from './components/ExplainPanel'
 import WeakSpots from './components/WeakSpots'
 import { PieceSprite } from './components/pieces'
-import { engine, judgeMove } from './lib/engine'
+import { engine, judgeMove, QUALITY_BADGE } from './lib/engine'
 import { useEngine } from './lib/useEngine'
 import { positionFromSans } from './lib/chess'
 import { useMoveStats } from './lib/moveStats'
@@ -225,9 +225,17 @@ export default function App() {
       engine.getEval(position.fen),
       line.length % 2 === 1 ? 'w' : 'b',
       line[line.length - 1],
+      { fenBefore: parentFen, inBook: !outOfBook },
     )
     // engineSnapshot sert de signal : les evaluations arrivent au fil du calcul
-  }, [engineOn, parentFen, position.fen, line, engineSnapshot?.version])
+  }, [engineOn, parentFen, position.fen, line, outOfBook, engineSnapshot?.version])
+
+  /** Pastille du dernier coup : verdict du moteur, sinon « théorie » si le coup est dans l'arbre. */
+  const moveBadge = useMemo(() => {
+    if (line.length === 0) return null
+    if (verdict) return QUALITY_BADGE[verdict.quality]
+    return outOfBook ? null : QUALITY_BADGE.book
+  }, [line.length, verdict, outOfBook])
 
   // La branche parcourue est memorisee et depliee automatiquement
   useEffect(() => {
@@ -384,9 +392,17 @@ export default function App() {
 
   const forwardMove = nextGameMove ?? (outOfBook ? null : (anchor.children[0]?.san ?? null))
 
-  const boardBlock = (
+  /**
+   * Echiquier principal avec sa barre d'evaluation. En mode `flush` (mobile),
+   * la rangee barre + echiquier occupe toute la largeur de l'ecran, seules les
+   * commandes gardent une marge ; la hauteur reste bornee au viewport en paysage.
+   */
+  const renderBoardBlock = (flush = false) => (
     <div className="space-y-2.5">
-      <div className="flex gap-1.5" style={{ containerType: 'inline-size' }}>
+      <div
+        className={`mx-auto flex w-full gap-1.5 ${flush ? 'px-1' : ''}`}
+        style={{ containerType: 'inline-size', ...(flush ? { maxWidth: 'calc(100dvh - 9rem)' } : {}) }}
+      >
         <EvalBar snapshot={engineSnapshot} orientation={orientation} enabled={engineOn} />
         <div className="min-w-0 flex-1">
           <Chessboard
@@ -396,11 +412,12 @@ export default function App() {
             onMove={playMove}
             hint={moveHint}
             bestMove={engineOn ? bestLine?.uci : undefined}
+            badge={moveBadge}
           />
         </div>
       </div>
 
-      <div className="flex items-center gap-1">
+      <div className={`flex items-center gap-1 ${flush ? 'px-3' : ''}`}>
         <button
           onClick={() => setLine([])}
           disabled={line.length === 0}
@@ -580,8 +597,11 @@ export default function App() {
    * reste visible pendant la navigation dans les branches.
    */
   const miniBoardBlock = (
-    <div className="flex gap-2 bg-slate-900/40 p-2">
-      <div className="flex w-[44%] max-w-[230px] shrink-0 gap-1" style={{ containerType: 'inline-size' }}>
+    <div className="bg-slate-900/40 py-1.5">
+      <div
+        className="mx-auto flex w-full gap-1.5 px-1"
+        style={{ containerType: 'inline-size', maxWidth: 'calc(100dvh - 16rem)' }}
+      >
         <EvalBar snapshot={engineSnapshot} orientation={orientation} enabled={engineOn} />
         <div className="min-w-0 flex-1">
           <Chessboard
@@ -591,12 +611,13 @@ export default function App() {
             onMove={playMove}
             hint={moveHint}
             bestMove={engineOn ? bestLine?.uci : undefined}
+            badge={moveBadge}
           />
         </div>
       </div>
 
-      <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-        <div className="flex items-center gap-1.5">
+      <div className="flex min-w-0 flex-col gap-1.5 px-2 pt-1.5">
+        <div className="flex items-center gap-2">
           <div className="min-w-0 flex-1">
             {named && video ? (
               <a
@@ -618,9 +639,8 @@ export default function App() {
               {anchor.count > 1 ? ` · ${anchor.count} variantes` : ''}
             </p>
           </div>
-        </div>
 
-        <div className="flex gap-1">
+          <div className="flex shrink-0 gap-1">
           {[
             { label: '⏮', title: 'Position de départ', onClick: () => setLine([]), disabled: line.length === 0 },
             {
@@ -653,11 +673,12 @@ export default function App() {
               onClick={button.onClick}
               disabled={button.disabled}
               title={button.title}
-              className="min-h-9 flex-1 rounded-lg border border-slate-700 text-xs text-slate-300 active:bg-slate-800 disabled:opacity-30"
+              className="min-h-9 min-w-9 rounded-lg border border-slate-700 px-1.5 text-xs text-slate-300 active:bg-slate-800 disabled:opacity-30"
             >
               {button.label}
             </button>
           ))}
+          </div>
         </div>
 
         {outOfBook && (
@@ -667,9 +688,11 @@ export default function App() {
           </p>
         )}
 
-        <div className="min-h-0 flex-1 overflow-y-auto">
-          <MoveList sans={line} theoryPlies={matched} onGoTo={goToPly} />
-        </div>
+        {line.length > 0 && (
+          <div className="max-h-12 overflow-y-auto">
+            <MoveList sans={line} theoryPlies={matched} onGoTo={goToPly} />
+          </div>
+        )}
       </div>
     </div>
   )
@@ -793,7 +816,7 @@ export default function App() {
         {isDesktop ? (
           <>
             <aside className="flex w-[380px] shrink-0 flex-col overflow-y-auto border-r border-slate-800 bg-slate-900/40 p-3">
-              {boardBlock}
+              {renderBoardBlock()}
               <div className="mt-4 flex gap-1 border-b border-slate-800">
                 {tabs.map((item) => (
                   <button
@@ -831,9 +854,9 @@ export default function App() {
               <div className="min-h-0 flex-1">{treeBlock}</div>
             </div>
             {mobileView === 'board' && (
-              <div className="h-full space-y-4 overflow-y-auto p-3 pb-20">
-                {boardBlock}
-                {explorerBlock}
+              <div className="h-full space-y-4 overflow-y-auto pt-2 pb-20">
+                {renderBoardBlock(true)}
+                <div className="px-3">{explorerBlock}</div>
               </div>
             )}
             {mobileView === 'study' && (

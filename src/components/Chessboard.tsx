@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import type { PositionInfo } from '../lib/chess'
+import type { QualityBadge } from '../lib/engine'
 import { Piece } from './pieces'
 
 const FILES = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
@@ -19,11 +20,13 @@ interface Props {
   onMove: (san: string) => void
   /** Explication du dernier coup, revelee au survol de la pastille. */
   hint?: ReactNode
+  /** Classification du dernier coup : remplace le « i » de la pastille. */
+  badge?: QualityBadge | null
   /** Coup recommande par le moteur, en notation UCI (« e2e4 »). */
   bestMove?: string
 }
 
-export default function Chessboard({ position, orientation, knownSans, onMove, hint, bestMove }: Props) {
+export default function Chessboard({ position, orientation, knownSans, onMove, hint, bestMove, badge }: Props) {
   const gridRef = useRef<HTMLDivElement>(null)
   const [from, setFrom] = useState<string | null>(null)
   const [drag, setDrag] = useState<{ square: string; x: number; y: number; size: number } | null>(null)
@@ -324,18 +327,35 @@ export default function Chessboard({ position, orientation, knownSans, onMove, h
               else openHint()
             }}
             onPointerDown={(e) => e.stopPropagation()}
-            aria-label="Pourquoi ce coup ?"
-            title="Pourquoi ce coup ?"
-            className="flex items-center justify-center rounded-full bg-slate-900/55 font-bold text-slate-100/90 ring-1 ring-slate-100/30 transition-opacity hover:bg-slate-900/90"
-            style={{
-              width: 'clamp(10px, 3cqw, 17px)',
-              height: 'clamp(10px, 3cqw, 17px)',
-              fontSize: 'clamp(7px, 2cqw, 11px)',
-              lineHeight: 1,
-              opacity: hintBox ? 1 : 0.6,
-            }}
+            aria-label={badge ? `${badge.label} — pourquoi ce coup ?` : 'Pourquoi ce coup ?'}
+            title={badge ? `${badge.label} — pourquoi ce coup ?` : 'Pourquoi ce coup ?'}
+            className={`flex items-center justify-center rounded-full font-bold transition-opacity ${
+              badge
+                ? 'shadow-md shadow-black/50 ring-1 ring-white/70'
+                : 'bg-slate-900/55 text-slate-100/90 ring-1 ring-slate-100/30 hover:bg-slate-900/90'
+            }`}
+            style={
+              badge
+                ? {
+                    width: 'clamp(13px, 3.8cqw, 22px)',
+                    height: 'clamp(13px, 3.8cqw, 22px)',
+                    fontSize: badge.glyph.length > 1 ? 'clamp(7px, 2cqw, 11px)' : 'clamp(8px, 2.5cqw, 14px)',
+                    lineHeight: 1,
+                    letterSpacing: badge.glyph.length > 1 ? '-0.05em' : undefined,
+                    background: badge.color,
+                    color: badge.dark ? '#1f2937' : '#fff',
+                    opacity: hintBox ? 1 : 0.95,
+                  }
+                : {
+                    width: 'clamp(10px, 3cqw, 17px)',
+                    height: 'clamp(10px, 3cqw, 17px)',
+                    fontSize: 'clamp(7px, 2cqw, 11px)',
+                    lineHeight: 1,
+                    opacity: hintBox ? 1 : 0.6,
+                  }
+            }
           >
-            i
+            {badge ? badge.glyph : 'i'}
           </button>
         </div>
       )}

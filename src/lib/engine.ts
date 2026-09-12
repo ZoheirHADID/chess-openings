@@ -41,9 +41,16 @@ export interface StoredEval {
   mate: number | null
   depth: number
   bestSan?: string
+  /** Seconde meilleure variante (MultiPV 2) : sert a reperer le seul bon coup. */
+  second?: { cp: number | null; mate: number | null }
 }
 
 type Listener = (snapshot: EngineSnapshot) => void
+
+/** Profondeur des analyses d'arriere-plan (position precedente). */
+const SIDE_DEPTH = 14
+/** En dessous, une evaluation est trop superficielle pour juger un coup. */
+export const JUDGE_MIN_DEPTH = 10
 
 /** Convertit une variante UCI en coups algebriques lisibles. */
 function uciToSans(fen: string, uciMoves: string[], limit = 6): string[] {
@@ -162,7 +169,8 @@ class Engine {
     if (line.startsWith('bestmove')) {
       this.thinking = false
       if (this.mode === 'side' && this.sideResult) {
-        this.history.set(this.analysingFen, this.sideResult)
+        const known = this.history.get(this.analysingFen)
+        if (!known || known.depth <= this.sideResult.depth) this.history.set(this.analysingFen, this.sideResult)
         this.sideResult = null
       }
       this.emit()
@@ -191,7 +199,8 @@ class Engine {
     const mate = mateMatch ? sign * Number(mateMatch[1]) : null
 
     if (this.mode === 'side') {
-      if (rank === 1) this.sideResult = { cp, mate, depth, bestSan: sans[0] }
+      if (rank === 1) this.sideResult = { cp, mate, depth, bestSan: sans[0], second: this.sideResult?.second }
+      else if (rank === 2 && this.sideResult) this.sideResult.second = { cp, mate }
       return
     }
 
@@ -199,7 +208,19 @@ class Engine {
     this.depth = Math.max(this.depth, depth)
     this.thinking = true
     // L'analyse principale alimente aussi l'historique des evaluations
-    if (rank === 1) this.history.set(this.analysingFen, { cp, mate, depth, bestSan: sans[0] })
+    if (rank === 1) {
+      const second = this.lines.get(2)
+      this.history.set(this.analysingFen, {
+        cp,
+        mate,
+        depth,
+        bestSan: sans[0],
+        second: second ? { cp: second.cp, mate: second.mate } : undefined,
+      })
+    } else if (rank === 2) {
+      const stored = this.history.get(this.analysingFen)
+      if (stored) stored.second = { cp, mate }
+    }
     this.emit()
   }
 
@@ -212,7 +233,12 @@ class Engine {
       return
     }
     const fen = this.sideQueue.shift()
-    if (fen && !this.history.has(fen)) this.run(fen, 14, 'side')
+    if (fen && !this.isSettled(fen)) this.run(fen, SIDE_DEPTH, 'side')
+  }
+
+  /** Une evaluation assez profonde existe deja pour cette position. */
+  private isSettled(fen: string): boolean {
+    return (this.history.get(fen)?.depth ?? 0) >= JUDGE_MIN_DEPTH
   }
 
   private run(fen: string, depth: number, mode: 'main' | 'side') {
@@ -250,7 +276,8 @@ class Engine {
   /** Demande, sans urgence, l'evaluation d'une position (position precedente). */
   async requestEval(fen: string) {
     if (this.failure || !fen) return
-    if (this.history.has(fen) || this.sideQueue.includes(fen)) return
+    // Une evaluation superficielle (analyse principale interrompue tot) est refaite
+    if (this.isSettled(fen) || this.sideQueue.includes(fen)) return
     this.sideQueue.push(fen)
     if (this.sideQueue.length > 20) this.sideQueue.shift()
     try {
@@ -307,7 +334,7 @@ export function evalToShare(line: { cp: number | null; mate: number | null } | u
 }
 
 /** Evaluation en centipions ramenee au point de vue d'un camp. */
-export function scoreFor(value: StoredEval | undefined, color: 'w' | 'b'): number | null {
+export function scoreFor(value: Pick<StoredEval, 'cp' | 'mate'> | undefined, color: 'w' | 'b'): number | null {
   if (!value) return null
   const sign = color === 'w' ? 1 : -1
   if (value.mate !== null) return sign * value.mate > 0 ? 10_000 : -10_000
@@ -315,53 +342,162 @@ export function scoreFor(value: StoredEval | undefined, color: 'w' | 'b'): numbe
   return sign * value.cp
 }
 
-export type MoveQuality = 'best' | 'good' | 'inaccuracy' | 'mistake' | 'blunder'
+export type MoveQuality =
+  | 'brilliant'
+  | 'great'
+  | 'best'
+  | 'excellent'
+  | 'good'
+  | 'book'
+  | 'inaccuracy'
+  | 'mistake'
+  | 'miss'
+  | 'blunder'
 
 export interface MoveVerdict {
   quality: MoveQuality
   /** Perte en centipions par rapport au meilleur coup. */
   loss: number
+  /** Perte en points de pourcentage de victoire (bareme Lichess). */
+  drop: number
   /** Coup que le moteur aurait joue. */
   best?: string
   label: string
 }
 
-const QUALITY_LABEL: Record<MoveQuality, string> = {
+export const QUALITY_LABEL: Record<MoveQuality, string> = {
+  brilliant: 'Brillant',
+  great: 'Excellent',
   best: 'Meilleur coup',
+  excellent: 'Très bon coup',
   good: 'Bon coup',
+  book: 'Théorie',
   inaccuracy: 'Imprécision',
   mistake: 'Erreur',
+  miss: 'Occasion manquée',
   blunder: 'Gaffe',
 }
 
+/** Pastille posee sur l'echiquier : glyphe et couleur, dans l'esprit de chess.com. */
+export interface QualityBadge {
+  glyph: string
+  color: string
+  /** Texte sombre (fonds clairs). */
+  dark?: boolean
+  label: string
+}
+
+export const QUALITY_BADGE: Record<MoveQuality, QualityBadge> = {
+  brilliant: { glyph: '!!', color: '#26c2a3', label: QUALITY_LABEL.brilliant },
+  great: { glyph: '!', color: '#5b8bb0', label: QUALITY_LABEL.great },
+  best: { glyph: '★', color: '#81b64c', label: QUALITY_LABEL.best },
+  excellent: { glyph: '!', color: '#96bc4b', label: QUALITY_LABEL.excellent },
+  good: { glyph: '✓', color: '#96af8b', label: QUALITY_LABEL.good },
+  book: { glyph: '▤', color: '#a88865', label: QUALITY_LABEL.book },
+  inaccuracy: { glyph: '?!', color: '#f7c631', dark: true, label: QUALITY_LABEL.inaccuracy },
+  mistake: { glyph: '?', color: '#ffa459', dark: true, label: QUALITY_LABEL.mistake },
+  miss: { glyph: '✗', color: '#ff7769', label: QUALITY_LABEL.miss },
+  blunder: { glyph: '??', color: '#fa412d', label: QUALITY_LABEL.blunder },
+}
+
 /**
- * Compare la position avant et apres le coup pour juger sa qualite,
- * selon le bareme classique des analyses en ligne.
+ * Pourcentage de victoire (0 a 100) du camp qui joue, d'apres une evaluation
+ * exprimee de son point de vue. Formule Lichess (calibree sur les parties reelles).
+ */
+export function winPercent(score: number): number {
+  if (score >= 10_000) return 100
+  if (score <= -10_000) return 0
+  return 50 + 50 * (2 / (1 + Math.exp(-0.00368208 * score)) - 1)
+}
+
+const PIECE_VALUE: Record<string, number> = { p: 1, n: 3, b: 3, r: 5, q: 9, k: 0 }
+
+/**
+ * Le coup abandonne-t-il du materiel ? Une piece (pas un pion) qui se pose sur une
+ * case ou l'adversaire peut la prendre sans compensation immediate, ou une capture
+ * d'une piece de moindre valeur suivie d'une reprise.
+ */
+function isSacrifice(fenBefore: string, san: string): boolean {
+  try {
+    const chess = new Chess(fenBefore)
+    const move = chess.move(san)
+    if (!move || move.piece === 'k' || move.piece === 'p') return false
+    const mover = move.color
+    const enemy = mover === 'w' ? 'b' : 'w'
+    const attackers = chess.attackers(move.to, enemy)
+    if (attackers.length === 0) return false
+    const value = PIECE_VALUE[move.promotion ?? move.piece]
+    if (move.captured) return PIECE_VALUE[move.captured] < value
+    const cheapest = Math.min(...attackers.map((sq) => PIECE_VALUE[chess.get(sq)?.type ?? 'q']))
+    const defended = chess.attackers(move.to, mover).length > 0
+    return !defended || cheapest < value
+  } catch {
+    return false
+  }
+}
+
+export interface JudgeContext {
+  /** Position avant le coup, pour detecter un sacrifice. */
+  fenBefore?: string
+  /** Le coup figure dans l'arbre theorique. */
+  inBook?: boolean
+}
+
+/**
+ * Compare la position avant et apres le coup pour le classer, selon les criteres
+ * des analyses Lichess (perte en pourcentage de victoire) et chess.com (categories
+ * Brillant / Excellent / Meilleur / Très bon / Bon / Imprécision / Erreur / Occasion
+ * manquée / Gaffe).
  */
 export function judgeMove(
   before: StoredEval | undefined,
   after: StoredEval | undefined,
   moverColor: 'w' | 'b',
   playedSan: string,
+  context: JudgeContext = {},
 ): MoveVerdict | null {
+  // Une analyse trop superficielle ne voit pas encore la refutation d'un mauvais coup :
+  // on attend que les deux positions soient evaluees a une profondeur suffisante.
+  if (!before || !after || before.depth < JUDGE_MIN_DEPTH || after.depth < JUDGE_MIN_DEPTH) return null
   const scoreBefore = scoreFor(before, moverColor)
   const scoreAfter = scoreFor(after, moverColor)
   if (scoreBefore === null || scoreAfter === null) return null
 
   const loss = Math.max(0, scoreBefore - scoreAfter)
-  const playedBest = before?.bestSan === playedSan
+  const wpBefore = winPercent(scoreBefore)
+  const wpAfter = winPercent(scoreAfter)
+  const drop = Math.max(0, wpBefore - wpAfter)
+  const playedBest = before?.bestSan === playedSan || drop < 0.5
 
   let quality: MoveQuality
-  if (playedBest || loss <= 15) quality = 'best'
-  else if (loss <= 50) quality = 'good'
-  else if (loss <= 120) quality = 'inaccuracy'
-  else if (loss <= 300) quality = 'mistake'
+  if (playedBest) {
+    quality = 'best'
+    const wasWinning = wpBefore >= 90
+    const second = before?.second ? scoreFor(before.second, moverColor) : null
+    // Seul bon coup : la seconde variante du moteur perd nettement plus
+    if (second !== null && !wasWinning && wpBefore - winPercent(second) >= 10) quality = 'great'
+    // Sacrifice sain dans une position pas encore gagnee
+    if (!wasWinning && wpAfter >= 35 && context.fenBefore && isSacrifice(context.fenBefore, playedSan)) {
+      quality = 'brilliant'
+    }
+  } else if (drop < 2) quality = 'excellent'
+  else if (drop < 5) quality = 'good'
+  else if (drop < 10) quality = 'inaccuracy'
+  else if (drop < 20) quality = 'mistake'
   else quality = 'blunder'
+
+  // Occasion manquee : on tenait un gain net (mat ou gros avantage) et on le laisse filer
+  const hadWin = (before?.mate !== null && before?.mate !== undefined && scoreBefore > 0) || wpBefore >= 85
+  if (hadWin && (quality === 'mistake' || quality === 'blunder') && wpAfter < 80) quality = 'miss'
+
+  // Coup de theorie correct (ni le meilleur, ni fautif) : pastille « livre »
+  if (context.inBook && (quality === 'excellent' || quality === 'good')) quality = 'book'
 
   return {
     quality,
     loss,
+    drop,
     best: before?.bestSan,
-    label: playedBest ? QUALITY_LABEL.best : QUALITY_LABEL[quality],
+    label: QUALITY_LABEL[quality],
   }
 }
