@@ -307,17 +307,36 @@ export default function App() {
     setGames((prev) => mergeGames(prev, incoming).games)
   }, [])
 
+  /**
+   * Ouvre une partie a etudier dans l'arbre. L'echiquier se tourne du cote du
+   * joueur : couleur connue de la partie, sinon camp choisi explicitement, sinon
+   * pseudo reconnu parmi les joueurs, sinon couleur du filtre courant.
+   */
   const openGame = useCallback(
-    (game: ImportedGame) => {
-      setActiveGame(game)
-      if (game.color) setOrientation(game.color)
+    (game: ImportedGame, side?: 'white' | 'black') => {
+      const me = new Set(
+        Object.values(usernames)
+          .map((name) => name.trim().toLowerCase())
+          .filter(Boolean),
+      )
+      const guessed = me.has(game.white.toLowerCase())
+        ? 'white'
+        : me.has(game.black.toLowerCase())
+          ? 'black'
+          : undefined
+      const color = game.color ?? side ?? guessed ?? (sideFilter === 'all' ? undefined : sideFilter)
+      const studied = color && color !== game.color ? { ...game, color } : game
+      // La couleur decouverte est conservee : bilans et pastilles en tiennent compte
+      if (studied !== game) setGames((prev) => prev.map((g) => (g.id === game.id ? studied : g)))
+      setActiveGame(studied)
+      if (color) setOrientation(color)
       // On se place la ou la theorie s'arrete : la suite reellement jouee est
       // greffee en pointilles et se parcourt coup par coup avec ▶.
       const stop = root ? followSans(root, game.sans).matched : 0
       setLine(game.sans.slice(0, stop))
       if (!isDesktop) setMobileView('tree')
     },
-    [isDesktop, root],
+    [isDesktop, root, usernames, sideFilter],
   )
 
   // Navigation clavier dans la ligne courante
@@ -604,6 +623,7 @@ export default function App() {
       onUsernameChange={(platform, value) => setUsernames((prev) => ({ ...prev, [platform]: value }))}
       onImport={importGames}
       sideFilter={sideFilter}
+      activeGameId={activeGame?.id ?? null}
       onSelectGame={openGame}
       onClear={() => {
         if (confirm('Supprimer les parties importées ?')) {
@@ -702,6 +722,23 @@ export default function App() {
           ))}
           </div>
         </div>
+
+        {activeGame && (
+          <div className="flex items-center gap-2 rounded bg-purple-950/30 px-1.5 py-0.5 text-[10px] text-purple-200">
+            <span className="truncate">
+              Partie {activeGame.color === 'black' ? '●' : '○'} {activeGame.white} – {activeGame.black} (
+              {activeGame.result})
+              {gameLine ? ` · ${line.length}/${gameLine.length} · ▶ suit la partie` : ' · ligne quittée'}
+            </span>
+            <button
+              onClick={() => setActiveGame(null)}
+              className="ml-auto shrink-0 text-purple-400"
+              title="Fermer la partie"
+            >
+              ✕
+            </button>
+          </div>
+        )}
 
         {outOfBook && (
           <p className="rounded bg-amber-950/30 px-1.5 py-0.5 text-[10px] text-amber-300">

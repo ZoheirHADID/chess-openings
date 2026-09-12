@@ -29,7 +29,10 @@ interface Props {
   onImport: (games: ImportedGame[]) => void
   /** Couleur a laquelle l'affichage est restreint. */
   sideFilter: 'all' | 'white' | 'black'
-  onSelectGame: (game: ImportedGame) => void
+  /** Partie en cours d'etude, mise en evidence dans la liste. */
+  activeGameId: string | null
+  /** `side` : camp choisi a la main quand la couleur du joueur est inconnue. */
+  onSelectGame: (game: ImportedGame, side?: 'white' | 'black') => void
   onClear: () => void
 }
 
@@ -59,6 +62,7 @@ export default function GamesPanel({
   onUsernameChange,
   onImport,
   sideFilter,
+  activeGameId,
   onSelectGame,
   onClear,
 }: Props) {
@@ -267,22 +271,58 @@ export default function GamesPanel({
           <ul className="max-h-72 space-y-1 overflow-y-auto pr-1">
             {listed.slice(0, 100).map((game) => {
               const badge = resultBadge(game)
+              const active = game.id === activeGameId
               return (
                 <li key={game.id}>
                   <button
                     onClick={() => onSelectGame(game)}
-                    className="w-full rounded-lg border border-slate-700/70 bg-slate-900/50 px-2.5 py-1.5 text-left transition-colors hover:bg-slate-800"
+                    title="Étudier cette partie dans l’arbre"
+                    aria-pressed={active}
+                    className={`w-full rounded-lg border px-2.5 py-1.5 text-left transition-colors ${
+                      active
+                        ? 'border-purple-500/70 bg-purple-950/30 ring-1 ring-purple-500/40'
+                        : 'border-slate-700/70 bg-slate-900/50 hover:bg-slate-800'
+                    }`}
                   >
                     <span className="flex items-center gap-2">
                       <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold text-white ${badge.color}`}>
                         {badge.label}
                       </span>
-                      {game.color && (
+                      {game.color ? (
                         <span
                           className="shrink-0 text-[11px] leading-none text-slate-300"
                           title={game.color === 'white' ? 'Vous jouiez les blancs' : 'Vous jouiez les noirs'}
                         >
                           {COLOR_MARK[game.color]} {game.color === 'white' ? 'Blancs' : 'Noirs'}
+                        </span>
+                      ) : (
+                        <span className="flex shrink-0 gap-0.5" title="Couleur inconnue : choisir le camp à étudier">
+                          {(['white', 'black'] as const).map((side) => (
+                            <span
+                              key={side}
+                              role="button"
+                              tabIndex={0}
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                onSelectGame(game, side)
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                  e.preventDefault()
+                                  e.stopPropagation()
+                                  onSelectGame(game, side)
+                                }
+                              }}
+                              className="rounded border border-slate-600 px-1 text-[10px] leading-4 text-slate-300 hover:bg-slate-700"
+                            >
+                              {COLOR_MARK[side]}
+                            </span>
+                          ))}
+                        </span>
+                      )}
+                      {active && (
+                        <span className="shrink-0 rounded bg-purple-700/60 px-1 text-[9px] font-semibold text-purple-100">
+                          étudiée
                         </span>
                       )}
                       <span className="truncate text-xs text-slate-200">

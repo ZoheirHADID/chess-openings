@@ -120,9 +120,12 @@ Un sélecteur en en-tête choisit ce que la couleur traduit :
 - **Rejouer une partie hors théorie** : l'ouvrir place le curseur là où la théorie s'arrête, `▶` avance
   coup par coup dans la partie, `⏭` va à la fin, et le compteur indique la position dans la partie.
   Jusqu'à 160 demi-coups conservés par partie.
-- **L'échiquier se retourne automatiquement** dans le sens où vous avez joué. Si le pseudo n'a pas été
-  reconnu à l'import (PGN sans nom saisi), la couleur est déduite du joueur présent dans la majorité des
-  parties.
+- **Choisir une partie à étudier** : dans l'onglet *Parties*, un clic sur une partie la met en évidence
+  (« étudiée »), la place dans l'arbre des variantes et **retourne l'échiquier dans le sens où vous avez
+  joué**. Si le pseudo n'a pas été reconnu à l'import (PGN sans nom saisi), la couleur est déduite du
+  joueur présent dans la majorité des parties, puis des pseudos Lichess / Chess.com saisis ; à défaut,
+  deux boutons `○` / `●` sur la ligne de la partie choisissent le camp à étudier, et ce choix est
+  mémorisé. Sur mobile, un rappel de la partie suivie s'affiche sous l'échiquier.
 
 ### Statistiques Lichess
 Pour la position courante, l'onglet *Lichess* interroge l'**Opening Explorer** (parties blitz / rapide /
