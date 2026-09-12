@@ -58,11 +58,11 @@ function hangingPieces(chess: Chess, victim: 'w' | 'b'): { square: string; type:
 }
 
 /** « un pion », « deux pions », « une pièce mineure », « la qualité », « du matériel (N points) ». */
-function describeLoss(points: number): string {
+function describeLoss(points: number, captures: string[]): string {
   if (points >= 9) return 'la dame'
   if (points === 5) return 'une tour'
   if (points === 3) return 'une pièce mineure'
-  if (points === 2) return 'la qualité ou deux pions'
+  if (points === 2) return captures.some((c) => c.includes('tour')) ? 'la qualité' : 'deux pions'
   if (points === 1) return 'un pion'
   return `du matériel (${points} points)`
 }
@@ -135,24 +135,30 @@ export function describeRefutation(
     points.push(`L’adversaire force le mat en ${Math.abs(best.mate!)} coup${Math.abs(best.mate!) > 1 ? 's' : ''}.`)
   }
 
-  // Premier coup de la punition
-  if (firstReply.captured) {
+  // Premier coup de la punition (un mat en un se passe de commentaire)
+  const mateInOne = mateForEnemy && Math.abs(best.mate!) === 1
+  if (firstReply.captured && !mateInOne) {
     points.push(
       `${firstReply.san} prend ${article(firstReply.captured)} ${PIECE_NAMES[firstReply.captured]} en ${firstReply.to}${
-        firstReply.check ? ' avec échec : vous ne pouvez pas riposter' : ''
+        firstReply.check ? ' avec échec : il faut d’abord parer l’échec' : ''
       }.`,
     )
-  } else if (firstReply.check) {
-    points.push(`${firstReply.san} donne échec et gagne un temps.`)
   }
 
   const others = threats.filter((t) => t.square !== firstReply!.to)
-  if (others.length >= 2) {
-    const names = others.slice(0, 2).map((t) => `${article(t.type)} ${PIECE_NAMES[t.type]} en ${t.square}`)
-    points.push(`${firstReply.san} attaque ${names.join(' et ')} : une fourchette, l’une des deux tombe.`)
-  } else if (others.length === 1) {
-    const t = others[0]
-    points.push(`${firstReply.san} menace ${article(t.type)} ${PIECE_NAMES[t.type]} en ${t.square}, insuffisamment défendu${FEMININE.has(t.type) ? 'e' : ''}.`)
+  const name = (t: { square: string; type: string }) => `${article(t.type)} ${PIECE_NAMES[t.type]} en ${t.square}`
+  if (!mateInOne) {
+    if (firstReply.check && others.length >= 1) {
+      points.push(
+        `${firstReply.san} donne échec et attaque en même temps ${name(others[0])} : une fourchette, la pièce est perdue.`,
+      )
+    } else if (others.length >= 2) {
+      points.push(`${firstReply.san} attaque ${others.slice(0, 2).map(name).join(' et ')} : une fourchette, l’une des deux tombe.`)
+    } else if (others.length === 1) {
+      points.push(`${firstReply.san} menace ${name(others[0])}, insuffisamment défendu${FEMININE.has(others[0].type) ? 'e' : ''}.`)
+    } else if (firstReply.check && !firstReply.captured) {
+      points.push(`${firstReply.san} donne échec et gagne un temps.`)
+    }
   }
 
   // Bilan materiel au bout de la variante
@@ -161,7 +167,7 @@ export function describeRefutation(
   if (!mateForEnemy) {
     if (lost >= 1) {
       const extra = captures.length > 1 ? ` (${captures.slice(0, 3).join(', ')})` : ''
-      points.push(`Au bout de la variante, vous perdez ${describeLoss(lost)}${extra}.`)
+      points.push(`Au bout de la variante, vous perdez ${describeLoss(lost, captures)}${extra}.`)
     } else if (points.length === 0) {
       const pawns = (verdict.loss / 100).toFixed(1)
       points.push(

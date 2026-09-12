@@ -231,12 +231,6 @@ export default function App() {
   /** Meilleur coup du moteur pour la position affichee. */
   const bestLine = engineSnapshot?.fen === position.fen ? engineSnapshot.lines[0] : undefined
 
-  /** Comment l'adversaire punit une faute : d'apres la meilleure reponse du moteur. */
-  const refutation = useMemo(
-    () => describeRefutation(position.fen, bestLine, verdict),
-    [position.fen, bestLine, verdict],
-  )
-
   /** Position precedente : le moteur l'evalue aussi, pour juger le coup joue. */
   const parentFen = useMemo(
     () => (line.length > 0 ? positionFromSans(line.slice(0, -1)).fen : null),
@@ -265,6 +259,11 @@ export default function App() {
     if (verdict) return QUALITY_BADGE[verdict.quality]
     return outOfBook ? null : QUALITY_BADGE.book
   }, [line.length, verdict, outOfBook])
+  /** Comment l'adversaire punit une faute : d'apres la meilleure reponse du moteur. */
+  const refutation = useMemo(
+    () => describeRefutation(position.fen, bestLine, verdict),
+    [position.fen, bestLine, verdict],
+  )
 
   // La branche parcourue est memorisee et depliee automatiquement
   useEffect(() => {
