@@ -39,6 +39,8 @@ export async function fetchExplorer(uci: string[], signal?: AbortSignal): Promis
   })
   const res = await fetch(`${BASE}?${params}`, { signal })
   if (res.status === 429) throw new Error('Limite de requêtes Lichess atteinte, patientez un instant')
+  if (res.status === 401 || res.status >= 500)
+    throw new Error(`Explorateur Lichess hors service côté Lichess (${res.status}) : réessayez plus tard`)
   if (!res.ok) throw new Error(`Explorateur Lichess indisponible (${res.status})`)
   const json = (await res.json()) as ExplorerResult
   if (cache.size > 200) cache.clear()

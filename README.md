@@ -189,10 +189,12 @@ classique, Elo 1600+) : répartition des résultats et coups les plus joués, cl
 
 ### Responsive
 - **Bureau** : panneau latéral fixe (échiquier, liste de coups, onglets Étude / Parties / Lichess) et arbre plein cadre.
-- **Mobile / tablette** : l'**échiquier reste affiché au-dessus de l'arbre** pendant toute la navigation
-  (avec barre d'évaluation, nom de l'ouverture, boutons de navigation et liste de coups), repliable d'une
-  touche pour passer l'arbre en plein écran. Il est également conservé dans la vue Étude.
-- Barre d'onglets inférieure (Arbre · Échiquier · Étude · Parties), cibles tactiles ≥ 44 px, zone sûre iOS
+- **Mobile / tablette** : l'**échiquier est toujours affiché en tête de page**, quel que soit l'onglet
+  (avec barre d'évaluation, nom de l'ouverture, boutons de navigation, liste de coups et panneau
+  « jouer la théorie »). Dans l'onglet Arbre, l'arbre s'affiche en dessous ; la page défile et le bouton
+  « Arbre en plein écran » fait descendre l'écran sur l'arbre, qui occupe alors toute la hauteur
+  (« Revenir à l'échiquier » remonte). Le contenu ne dépasse jamais la largeur de l'écran.
+- Barre d'onglets inférieure (Arbre · Étude · Lichess · Parties), cibles tactiles ≥ 44 px, zone sûre iOS
   respectée, zoom initial de l'arbre adapté aux petits écrans, hauteur en `100dvh` pour ne pas être rogné
   par la barre d'URL, et champs à 16 px pour éviter le zoom automatique d'iOS.
 - Navigation clavier : `←` remonte d'un coup, `→` descend dans la variante principale.

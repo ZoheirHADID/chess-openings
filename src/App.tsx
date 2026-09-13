@@ -29,7 +29,7 @@ import { inferColors, loadGames, mapGamesToTree, mergeGames, parsePgn, saveGames
 import type { ImportedGame, OpeningsData, ProgressMap, StudyStatus, TreeNode } from './lib/types'
 
 type PanelTab = 'study' | 'games' | 'explorer'
-type MobileView = 'tree' | 'board' | 'study' | 'games'
+type MobileView = 'tree' | 'explorer' | 'study' | 'games'
 
 const USER_KEY = 'chess-openings:usernames:v2'
 
@@ -84,7 +84,14 @@ export default function App() {
   const [activeGame, setActiveGame] = useState<ImportedGame | null>(null)
   const [engineOn, setEngineOn] = useState(() => localStorage.getItem('chess-openings:engine') === 'on')
   const [storageWarning, setStorageWarning] = useState(false)
-  const [miniBoardOpen, setMiniBoardOpen] = useState(true)
+  /** Conteneur defilant du mode mobile : echiquier en tete, contenu du mode en dessous. */
+  const [mobileScrollEl, setMobileScrollEl] = useState<HTMLElement | null>(null)
+  const mobileScrollRef = useRef<HTMLElement | null>(null)
+  const mobileBoardRef = useRef<HTMLDivElement>(null)
+  const mobileBarRef = useRef<HTMLButtonElement>(null)
+  const [mobileHeight, setMobileHeight] = useState(0)
+  /** Vrai quand l'echiquier est defile hors de l'ecran : l'arbre occupe toute la hauteur. */
+  const [treeFocused, setTreeFocused] = useState(false)
   /** Mode « jouer la théorie » : l'ordinateur répond au hasard dans l'arbre. */
   const [training, setTraining] = useState<{ color: 'white' | 'black' } | null>(null)
   const [trainScore, setTrainScore] = useState<TrainingScore>({ found: 0, missed: 0 })
@@ -95,6 +102,29 @@ export default function App() {
   const [dropping, setDropping] = useState(false)
   const isDesktop = useMediaQuery('(min-width: 1024px)')
   const dropDepth = useRef(0)
+
+  // Hauteur visible du conteneur mobile : l'arbre la prend en entier une fois
+  // l'echiquier defile hors de l'ecran (la page « descend » sur l'arbre).
+  useEffect(() => {
+    if (!mobileScrollEl) return
+    const observer = new ResizeObserver(([entry]) => setMobileHeight(entry.contentRect.height))
+    observer.observe(mobileScrollEl)
+    return () => observer.disconnect()
+  }, [mobileScrollEl])
+
+  const onMobileScroll = () => {
+    const el = mobileScrollRef.current
+    if (!el) return
+    setTreeFocused(el.scrollTop >= (mobileBoardRef.current?.offsetHeight ?? 0) - 8)
+  }
+
+  /** Fait defiler le mode mobile jusqu'a l'arbre (plein ecran) ou remonte a l'echiquier. */
+  const scrollMobile = (toTree: boolean) => {
+    mobileScrollRef.current?.scrollTo({
+      top: toTree ? (mobileBoardRef.current?.offsetHeight ?? 0) : 0,
+      behavior: 'smooth',
+    })
+  }
 
   useEffect(() => {
     fetch(`${import.meta.env.BASE_URL}openings.json`)
@@ -409,7 +439,7 @@ export default function App() {
       setOrientation(color)
       setActiveGame(null)
       setLine([])
-      if (!isDesktop) setMobileView('board')
+      if (!isDesktop) setMobileView('tree')
     },
     [isDesktop],
   )
@@ -587,16 +617,99 @@ export default function App() {
 
   const forwardMove = nextGameMove ?? (outOfBook ? null : (anchor.children[0]?.san ?? null))
 
-  /**
-   * Echiquier principal avec sa barre d'evaluation. En mode `flush` (mobile),
-   * la rangee barre + echiquier occupe toute la largeur de l'ecran, seules les
-   * commandes gardent une marge ; la hauteur reste bornee au viewport en paysage.
-   */
-  const renderBoardBlock = (flush = false) => (
+  /** Panneau « jouer la théorie » : strategie, consigne, indice et commandes. */
+  const trainingBlock = training && (
+    <div className="space-y-1.5 rounded-lg border border-indigo-700/60 bg-indigo-950/30 px-2.5 py-2 text-[11px] text-indigo-100">
+      <div className="flex items-center gap-2">
+        <span className="truncate font-semibold">
+          🤖 Jouer la théorie · vous avez les {training.color === 'white' ? 'blancs' : 'noirs'}
+        </span>
+        <span className="ml-auto shrink-0 tabular-nums text-indigo-300" title="Coups théoriques trouvés · coups hors théorie">
+          <span className="text-emerald-300">{trainScore.found} ✓</span> · <span className="text-rose-300">{trainScore.missed} ✗</span>
+        </span>
+      </div>
+      <div className="flex items-center gap-1.5">
+        <span className="shrink-0 text-indigo-300">Réponse :</span>
+        <div className="flex rounded-md border border-indigo-700/70 p-0.5">
+          {(Object.keys(STRATEGY_LABEL) as TrainingStrategy[]).map((id) => (
+            <button
+              key={id}
+              onClick={() => setTrainStrategy(id)}
+              title={STRATEGY_TITLE[id]}
+              className={`rounded px-1.5 py-0.5 text-[10px] font-medium whitespace-nowrap transition-colors ${
+                trainStrategy === id ? 'bg-indigo-600 text-white' : 'text-indigo-300 hover:text-white'
+              }`}
+            >
+              {STRATEGY_LABEL[id]}
+            </button>
+          ))}
+        </div>
+      </div>
+      <p className="text-indigo-200/90">
+        {outOfBook
+          ? `Hors théorie. Coups attendus : ${anchor.children.map((c) => c.san).join(', ')}.`
+          : theoryEnded
+            ? `Fin de la théorie répertoriée : ${named ? frName(named.name) : 'ligne sans nom'}. Bravo, nouvelle partie ?`
+            : computerTurn
+              ? 'L’ordinateur choisit une variante…'
+              : `À vous : trouvez un coup théorique (${anchor.children.length} possible${anchor.children.length > 1 ? 's' : ''}).`}
+      </p>
+      {hintOpen && !outOfBook && anchor.children.length > 0 && (
+        <ul className="space-y-0.5 text-indigo-200/80">
+          {anchor.children.slice(0, 6).map((child) => {
+            const label = child.variation ?? child.name ?? nearestNamed(child)?.name
+            return (
+              <li key={child.id}>
+                <span className="font-mono text-slate-100">{child.san}</span>
+                {label && <span className="text-indigo-300/80"> · {label}</span>}
+              </li>
+            )
+          })}
+          {anchor.children.length > 6 && <li>… et {anchor.children.length - 6} autre(s)</li>}
+        </ul>
+      )}
+      <div className="flex flex-wrap gap-1">
+        {outOfBook && (
+          <button
+            onClick={() => setLine((prev) => prev.slice(0, matched))}
+            className="rounded-md border border-amber-600/70 px-2 py-1 text-amber-200 hover:bg-amber-900/40"
+          >
+            ↶ Reprendre
+          </button>
+        )}
+        {playerTurn && !outOfBook && !theoryEnded && (
+          <button
+            onClick={() => setHintOpen((open) => !open)}
+            className="rounded-md border border-indigo-600/70 px-2 py-1 hover:bg-indigo-900/40"
+          >
+            💡 {hintOpen ? 'Masquer' : 'Indice'}
+          </button>
+        )}
+        <button
+          onClick={() => setLine([])}
+          className="rounded-md border border-indigo-600/70 px-2 py-1 hover:bg-indigo-900/40"
+        >
+          🔁 Nouvelle partie
+        </button>
+        <button
+          onClick={() => startTraining(training.color === 'white' ? 'black' : 'white')}
+          className="rounded-md border border-indigo-600/70 px-2 py-1 hover:bg-indigo-900/40"
+        >
+          ⇅ Changer de couleur
+        </button>
+        <button onClick={stopTraining} className="ml-auto rounded-md px-2 py-1 text-indigo-300 hover:text-white">
+          ✕ Quitter
+        </button>
+      </div>
+    </div>
+  )
+
+  /** Echiquier principal du bureau, avec sa barre d'evaluation et ses commandes. */
+  const renderBoardBlock = () => (
     <div className="space-y-2.5">
       <div
-        className={`mx-auto flex w-full gap-1.5 ${flush ? 'px-1' : ''}`}
-        style={{ containerType: 'inline-size', ...(flush ? { maxWidth: 'calc(100dvh - 9rem)' } : {}) }}
+        className="mx-auto flex w-full gap-1.5"
+        style={{ containerType: 'inline-size' }}
       >
         <EvalBar snapshot={engineSnapshot} orientation={orientation} enabled={engineOn} />
         <div className="min-w-0 flex-1">
@@ -612,7 +725,7 @@ export default function App() {
         </div>
       </div>
 
-      <div className={`flex items-center gap-1 ${flush ? 'px-3' : ''}`}>
+      <div className="flex items-center gap-1">
         <button
           onClick={() => setLine([])}
           disabled={line.length === 0}
@@ -673,95 +786,7 @@ export default function App() {
         </button>
       </div>
 
-      {training && (
-        <div
-          className={`space-y-1.5 rounded-lg border border-indigo-700/60 bg-indigo-950/30 px-2.5 py-2 text-[11px] text-indigo-100 ${
-            flush ? 'mx-3' : ''
-          }`}
-        >
-          <div className="flex items-center gap-2">
-            <span className="truncate font-semibold">
-              🤖 Jouer la théorie · vous avez les {training.color === 'white' ? 'blancs' : 'noirs'}
-            </span>
-            <span className="ml-auto shrink-0 tabular-nums text-indigo-300" title="Coups théoriques trouvés · coups hors théorie">
-              <span className="text-emerald-300">{trainScore.found} ✓</span> · <span className="text-rose-300">{trainScore.missed} ✗</span>
-            </span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="shrink-0 text-indigo-300">Réponse :</span>
-            <div className="flex rounded-md border border-indigo-700/70 p-0.5">
-              {(Object.keys(STRATEGY_LABEL) as TrainingStrategy[]).map((id) => (
-                <button
-                  key={id}
-                  onClick={() => setTrainStrategy(id)}
-                  title={STRATEGY_TITLE[id]}
-                  className={`rounded px-1.5 py-0.5 text-[10px] font-medium whitespace-nowrap transition-colors ${
-                    trainStrategy === id ? 'bg-indigo-600 text-white' : 'text-indigo-300 hover:text-white'
-                  }`}
-                >
-                  {STRATEGY_LABEL[id]}
-                </button>
-              ))}
-            </div>
-          </div>
-          <p className="text-indigo-200/90">
-            {outOfBook
-              ? `Hors théorie. Coups attendus : ${anchor.children.map((c) => c.san).join(', ')}.`
-              : theoryEnded
-                ? `Fin de la théorie répertoriée : ${named ? frName(named.name) : 'ligne sans nom'}. Bravo, nouvelle partie ?`
-                : computerTurn
-                  ? 'L’ordinateur choisit une variante…'
-                  : `À vous : trouvez un coup théorique (${anchor.children.length} possible${anchor.children.length > 1 ? 's' : ''}).`}
-          </p>
-          {hintOpen && !outOfBook && anchor.children.length > 0 && (
-            <ul className="space-y-0.5 text-indigo-200/80">
-              {anchor.children.slice(0, 6).map((child) => {
-                const label = child.variation ?? child.name ?? nearestNamed(child)?.name
-                return (
-                  <li key={child.id}>
-                    <span className="font-mono text-slate-100">{child.san}</span>
-                    {label && <span className="text-indigo-300/80"> · {label}</span>}
-                  </li>
-                )
-              })}
-              {anchor.children.length > 6 && <li>… et {anchor.children.length - 6} autre(s)</li>}
-            </ul>
-          )}
-          <div className="flex flex-wrap gap-1">
-            {outOfBook && (
-              <button
-                onClick={() => setLine((prev) => prev.slice(0, matched))}
-                className="rounded-md border border-amber-600/70 px-2 py-1 text-amber-200 hover:bg-amber-900/40"
-              >
-                ↶ Reprendre
-              </button>
-            )}
-            {playerTurn && !outOfBook && !theoryEnded && (
-              <button
-                onClick={() => setHintOpen((open) => !open)}
-                className="rounded-md border border-indigo-600/70 px-2 py-1 hover:bg-indigo-900/40"
-              >
-                💡 {hintOpen ? 'Masquer' : 'Indice'}
-              </button>
-            )}
-            <button
-              onClick={() => setLine([])}
-              className="rounded-md border border-indigo-600/70 px-2 py-1 hover:bg-indigo-900/40"
-            >
-              🔁 Nouvelle partie
-            </button>
-            <button
-              onClick={() => startTraining(training.color === 'white' ? 'black' : 'white')}
-              className="rounded-md border border-indigo-600/70 px-2 py-1 hover:bg-indigo-900/40"
-            >
-              ⇅ Changer de couleur
-            </button>
-            <button onClick={stopTraining} className="ml-auto rounded-md px-2 py-1 text-indigo-300 hover:text-white">
-              ✕ Quitter
-            </button>
-          </div>
-        </div>
-      )}
+      {trainingBlock}
 
       <div className="flex items-center gap-2">
         <div className="min-w-0 flex-1">
@@ -887,14 +912,14 @@ export default function App() {
   )
 
   /**
-   * Version compacte affichee au-dessus de l'arbre sur mobile : l'echiquier
-   * reste visible pendant la navigation dans les branches.
+   * Echiquier du mode mobile, toujours affiche en tete de page quel que soit
+   * l'onglet : il reste visible pendant la navigation dans les branches.
    */
   const miniBoardBlock = (
-    <div className="bg-slate-900/40 py-1.5">
+    <div className="w-full max-w-full overflow-x-hidden bg-slate-900/40 py-1.5">
       <div
         className="mx-auto flex w-full gap-1.5 px-1"
-        style={{ containerType: 'inline-size', maxWidth: 'calc(100dvh - 16rem)' }}
+        style={{ containerType: 'inline-size', maxWidth: 'max(16rem, calc(100dvh - 8rem))' }}
       >
         <EvalBar snapshot={engineSnapshot} orientation={orientation} enabled={engineOn} />
         <div className="min-w-0 flex-1">
@@ -977,24 +1002,7 @@ export default function App() {
           </div>
         </div>
 
-        {training && (
-          <div className="flex items-center gap-2 rounded bg-indigo-950/40 px-1.5 py-0.5 text-[10px] text-indigo-200">
-            <span className="truncate">
-              🤖 Théorie ·{' '}
-              {outOfBook
-                ? 'hors théorie'
-                : theoryEnded
-                  ? 'fin de la théorie'
-                  : computerTurn
-                    ? 'l’ordinateur joue…'
-                    : 'à vous de jouer'}{' '}
-              · {trainScore.found} ✓ {trainScore.missed} ✗
-            </span>
-            <button onClick={() => setMobileView('board')} className="ml-auto shrink-0 text-indigo-300">
-              Échiquier ▸
-            </button>
-          </div>
-        )}
+        {trainingBlock}
 
         {activeGame && (
           <div className="flex items-center gap-2 rounded bg-purple-950/30 px-1.5 py-0.5 text-[10px] text-purple-200">
@@ -1190,31 +1198,36 @@ export default function App() {
             <section className="min-w-0 flex-1">{treeBlock}</section>
           </>
         ) : (
-          <section className="min-h-0 flex-1">
-            <div className={mobileView === 'tree' ? 'flex h-full flex-col' : 'hidden'}>
-              {miniBoardOpen && <div className="shrink-0">{miniBoardBlock}</div>}
-              <button
-                onClick={() => setMiniBoardOpen((open) => !open)}
-                className="flex shrink-0 items-center justify-center gap-1.5 border-y border-slate-800 bg-slate-900/60 py-1 text-[10px] font-medium text-slate-400"
-                aria-expanded={miniBoardOpen}
-              >
-                {miniBoardOpen ? '▲ Masquer l’échiquier' : '▼ Afficher l’échiquier'}
-              </button>
-              <div className="min-h-0 flex-1">{treeBlock}</div>
+          <section
+            ref={(el) => {
+              mobileScrollRef.current = el
+              setMobileScrollEl(el)
+            }}
+            onScroll={onMobileScroll}
+            className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto"
+          >
+            <div ref={mobileBoardRef} className="w-full max-w-full">
+              {miniBoardBlock}
             </div>
-            {mobileView === 'board' && (
-              <div className="h-full space-y-4 overflow-x-hidden overflow-y-auto pt-2 pb-20">
-                {renderBoardBlock(true)}
-                <div className="px-3">{explorerBlock}</div>
+            {/* L'arbre reste monte hors de l'onglet pour conserver son zoom */}
+            <div className={mobileView === 'tree' ? '' : 'hidden'}>
+              <button
+                ref={mobileBarRef}
+                onClick={() => scrollMobile(!treeFocused)}
+                className="sticky top-0 z-10 flex w-full items-center justify-center gap-1.5 border-y border-slate-800 bg-slate-900/95 py-1 text-[10px] font-medium text-slate-400 backdrop-blur"
+              >
+                {treeFocused ? '▲ Revenir à l’échiquier' : '▼ Arbre en plein écran'}
+              </button>
+              <div
+                className="w-full"
+                style={{ height: mobileHeight ? mobileHeight - (mobileBarRef.current?.offsetHeight ?? 0) : '60vh' }}
+              >
+                {treeBlock}
               </div>
-            )}
-            {mobileView === 'study' && (
-              <div className="flex h-full flex-col">
-                <div className="shrink-0 border-b border-slate-800">{miniBoardBlock}</div>
-                <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto p-3 pb-20">{studyBlock}</div>
-              </div>
-            )}
-            {mobileView === 'games' && <div className="h-full overflow-x-hidden overflow-y-auto p-3 pb-20">{gamesBlock}</div>}
+            </div>
+            {mobileView === 'explorer' && <div className="p-3 pb-6">{explorerBlock}</div>}
+            {mobileView === 'study' && <div className="border-t border-slate-800 p-3 pb-6">{studyBlock}</div>}
+            {mobileView === 'games' && <div className="border-t border-slate-800 p-3 pb-6">{gamesBlock}</div>}
           </section>
         )}
       </main>
@@ -1228,8 +1241,8 @@ export default function App() {
             {(
               [
                 { id: 'tree', label: 'Arbre', icon: '🌳' },
-                { id: 'board', label: 'Échiquier', icon: '♟' },
                 { id: 'study', label: 'Étude', icon: '🎯' },
+                { id: 'explorer', label: 'Lichess', icon: '📊' },
                 { id: 'games', label: 'Parties', icon: '📥' },
               ] as const
             ).map((item) => (
