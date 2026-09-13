@@ -19,7 +19,11 @@ import { fetchCloudEval, getCloudEval, subscribeCloud, toStoredEval } from './li
 import { practicalNote } from './lib/practical'
 import { useDocs } from './lib/docs'
 import { useEngine } from './lib/useEngine'
-import { positionFromSans } from './lib/chess'
+import { fensOfLine, positionFromSans } from './lib/chess'
+import { reviewLine } from './lib/lineReview'
+import { buildFenIndexAsync, findTranspositions, type FenIndex } from './lib/transpositions'
+import LineSummary from './components/LineSummary'
+import Transposition from './components/Transposition'
 import { isResolved, totalOf, useMoveStats } from './lib/moveStats'
 import { explainMove } from './lib/explain'
 import { explainFault } from './lib/refutation'
@@ -393,6 +397,51 @@ export default function App() {
 
   /** Sources documentaires : Wikibooks pour la ligne exacte, Wikipédia pour l'ouverture. */
   const docs = useDocs(line, named?.family ? frName(named.family) : undefined)
+
+  /**
+   * Revue de toute la ligne : les evaluations cloud de chaque position sont
+   * demandees en cascade (cache, 404 memorises) ; les positions inconnues du
+   * cloud sont confiees au moteur local s'il est allume.
+   */
+  const lineFens = useMemo(() => fensOfLine(line), [line])
+  useEffect(() => {
+    let active = true
+    const run = async () => {
+      for (const fen of lineFens) {
+        if (!active) return
+        if (getCloudEval(fen) === undefined) {
+          await fetchCloudEval(fen)
+          await new Promise((r) => setTimeout(r, 120))
+        }
+        if (active && engineOn && getCloudEval(fen) === null) void engine.requestEval(fen)
+      }
+    }
+    const timer = setTimeout(() => void run(), 400)
+    return () => {
+      active = false
+      clearTimeout(timer)
+    }
+  }, [lineFens, engineOn])
+  const lineReview = useMemo(
+    () => reviewLine(lineFens, line, matched),
+    // evalVersion / cloudVersion : les evaluations arrivent au fil du calcul
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [lineFens, line, matched, evalVersion, cloudVersion],
+  )
+  const lineVerdicts = useMemo(() => lineReview.plies.map((p) => p.verdict), [lineReview])
+
+  /** Index position -> noeuds theoriques, construit en arriere-plan, pour reperer les transpositions. */
+  const [fenIndex, setFenIndex] = useState<FenIndex | null>(null)
+  useEffect(() => {
+    if (!tree) return
+    return buildFenIndexAsync(tree.root, setFenIndex)
+  }, [tree])
+  const transpositions = useMemo(
+    () => (line.length > 0 ? findTranspositions(fenIndex, position.fen, selectedId) : []),
+    [fenIndex, position.fen, selectedId, line.length],
+  )
+  /** Bascule vers une ligne theorique menant a la meme position. */
+  const joinTransposition = useCallback((node: TreeNode) => setLine(node.id ? node.id.split(' ') : []), [])
 
   /** Pastille du dernier coup : verdict du moteur, sinon « théorie » si le coup est dans l'arbre. */
   const moveBadge = useMemo(() => {
@@ -922,7 +971,9 @@ export default function App() {
         </div>
       )}
 
-      <MoveList sans={line} theoryPlies={matched} onGoTo={goToPly} />
+      <MoveList sans={line} theoryPlies={matched} onGoTo={goToPly} verdicts={lineVerdicts} />
+      {line.length > 0 && <LineSummary review={lineReview} plies={line.length} />}
+      <Transposition nodes={transpositions} outOfBook={outOfBook} onJoin={joinTransposition} />
 
       {activeGame && (
         <div className="rounded-lg border border-purple-700/50 bg-purple-950/20 px-2.5 py-2 text-[11px] text-purple-200">
@@ -1125,9 +1176,11 @@ export default function App() {
 
         {line.length > 0 && (
           <div className="max-h-12 overflow-y-auto">
-            <MoveList sans={line} theoryPlies={matched} onGoTo={goToPly} />
+            <MoveList sans={line} theoryPlies={matched} onGoTo={goToPly} verdicts={lineVerdicts} />
           </div>
         )}
+        {line.length > 0 && <LineSummary review={lineReview} plies={line.length} compact />}
+        <Transposition nodes={transpositions} outOfBook={outOfBook} onJoin={joinTransposition} compact />
       </div>
     </div>
   )

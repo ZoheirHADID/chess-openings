@@ -108,6 +108,17 @@ les résultats réels, et analyse **Stockfish** dès que la partie sort de la th
 - **Criticité de la position** : écart de chances de gain entre le meilleur coup et le second (sur
   l'analyse la plus profonde disponible) : *position critique* (un seul coup tient), *tranchante* ou
   *souple*.
+- **Revue de toute la ligne** : chaque coup de la liste est jugé (les évaluations cloud de toutes les
+  positions de la ligne sont demandées en cascade, les positions inconnues du cloud sont confiées au
+  moteur local s'il est allumé). Les coups remarquables portent leur glyphe dans la liste (`!!`, `!`,
+  `?!`, `?`, `✗`, `??`) et chaque camp reçoit une **précision** (moyenne des précisions par coup,
+  formule Lichess : 100 % pour le meilleur coup, ~60 % pour une erreur, ~10 % pour une gaffe) avec le
+  détail des fautes.
+- **Transpositions** : l'arbre est un trie de coups, mais la même position peut être atteinte par
+  plusieurs ordres (1.Nf3 Nf6 2.c4 e6 3.d4 = 1.d4 Nf6 2.c4 e6 3.Nf3). Un index position → nœuds
+  (construit en arrière-plan au chargement, ~8 700 nœuds, 570 positions à ordres multiples) repère
+  ces cas : hors théorie, « vous êtes en fait dans la théorie » avec un bouton *Rejoindre* qui bascule
+  sur la ligne répertoriée ; en théorie, les autres ordres de coups sont listés.
 
 ### Couleur des branches : progression ou résultats
 Un sélecteur en en-tête choisit ce que la couleur traduit :

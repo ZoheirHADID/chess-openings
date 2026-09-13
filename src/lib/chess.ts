@@ -85,6 +85,28 @@ export function positionFromSans(sans: string[]): PositionInfo {
   return info
 }
 
+const fensCache = new Map<string, string[]>()
+
+/** FEN de chaque position de la ligne : `fens[i]` apres i demi-coups (`fens[0]` = depart). */
+export function fensOfLine(sans: string[]): string[] {
+  const key = sans.join(' ')
+  const cached = fensCache.get(key)
+  if (cached) return cached
+  const chess = new Chess()
+  const fens = [chess.fen()]
+  for (const san of sans) {
+    try {
+      chess.move(san)
+    } catch {
+      break
+    }
+    fens.push(chess.fen())
+  }
+  if (fensCache.size > 300) fensCache.clear()
+  fensCache.set(key, fens)
+  return fens
+}
+
 /** Formate un chemin SAN en notation numerotee : "1. e4 c5 2. Nf3". */
 export function formatMoveList(sans: string[]): string {
   return sans
