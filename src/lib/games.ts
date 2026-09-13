@@ -154,10 +154,17 @@ interface ChessComArchives {
   archives?: string[]
 }
 
+interface ChessComMonth {
+  games?: { pgn?: string; end_time?: number; rules?: string }[]
+}
+
 /**
  * Telecharge les parties d'un joueur via l'API publique Chess.com.
  * Les archives sont mensuelles : on remonte l'historique complet, du mois le plus
- * recent au plus ancien, jusqu'a reunir `max` parties.
+ * recent au plus ancien, jusqu'a reunir `max` parties. Chaque mois est lu au
+ * format JSON, dont l'ordre (`end_time` croissant) est fiable — le fichier PGN
+ * mensuel, lui, est trie du plus recent au plus ancien et ne doit pas servir a
+ * choisir « les N dernieres » parties.
  */
 export async function fetchChessComGames(
   username: string,
@@ -187,13 +194,19 @@ export async function fetchChessComGames(
       fetched: collected.length,
       label: `Mois ${index + 1}/${months.length} (${period}) — ${collected.length} partie(s)`,
     })
-    const res = await fetch(`${month}/pgn`)
+    // Le mois en cours change en permanence : on evite le cache du navigateur
+    const res = await fetch(month, { cache: index === 0 ? 'no-cache' : 'default' })
     if (!res.ok) continue
-    const text = await res.text()
-    const remaining = max - collected.length
-    // Les archives sont chronologiques : on garde la fin du mois, la plus recente d'abord
-    const games = parsePgn(text, user, 'chesscom', remaining * 2).reverse()
-    collected.push(...games.slice(0, remaining))
+    const { games: monthGames } = (await res.json()) as ChessComMonth
+    if (!monthGames || monthGames.length === 0) continue
+    // De la plus recente a la plus ancienne, parties d'echecs classiques seulement
+    const recent = [...monthGames]
+      .filter((g) => g.pgn && (!g.rules || g.rules === 'chess'))
+      .sort((a, b) => (b.end_time ?? 0) - (a.end_time ?? 0))
+    for (const game of recent) {
+      if (collected.length >= max) break
+      collected.push(...parsePgn(game.pgn!, user, 'chesscom').slice(0, max - collected.length))
+    }
   }
 
   if (collected.length === 0) throw new Error(`Aucune partie standard exploitable pour « ${user} »`)

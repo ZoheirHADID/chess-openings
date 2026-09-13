@@ -188,8 +188,10 @@ Un sélecteur en en-tête choisit ce que la couleur traduit :
 
 ### Import de parties (Lichess et Chess.com)
 - **Lichess** : pseudo + API publique.
-- **Chess.com** : pseudo + archives mensuelles publiques ; l'import **remonte tout l'historique**, du mois
-  le plus récent au plus ancien, avec l'avancement affiché mois par mois.
+- **Chess.com** : pseudo + archives mensuelles publiques (format JSON, parties triées par heure de fin,
+  variantes exclues) ; l'import **remonte tout l'historique**, du mois le plus récent au plus ancien, avec
+  l'avancement affiché mois par mois. Le mois en cours est relu sans cache navigateur : « 1 partie »
+  ramène bien la dernière partie jouée.
 - **Nombre de dernières parties libre** (champ numérique, 500 par défaut, mémorisé) : l'import remonte
   l'historique des plus récentes aux plus anciennes jusqu'à ce nombre. Les deux pseudos sont mémorisés
   séparément.
