@@ -4,6 +4,7 @@ import Chessboard from './components/Chessboard'
 import MoveList from './components/MoveList'
 import SearchBar from './components/SearchBar'
 import StudyPanel from './components/StudyPanel'
+import OpeningCatalog from './components/OpeningCatalog'
 import GamesPanel, { type Platform } from './components/GamesPanel'
 import ExplorerPanel from './components/ExplorerPanel'
 import EvalBar from './components/EvalBar'
@@ -595,6 +596,15 @@ export default function App() {
     [isDesktop],
   )
 
+  /** Choix d'une ouverture dans le catalogue : on l'affiche et on la marque « à l'étude ». */
+  const studyOpening = useCallback(
+    (path: string) => {
+      selectPath(path)
+      setProgress((prev) => (prev[path]?.status === 'mastered' ? prev : setStatus(prev, path, 'studying')))
+    },
+    [selectPath],
+  )
+
   /** Joue un coup depuis la position courante (compte les reponses en entrainement). */
   const playMove = useCallback(
     (san: string) => {
@@ -1019,6 +1029,8 @@ export default function App() {
   )
 
   const studyBlock = (
+    <div className="space-y-4">
+    <OpeningCatalog data={tree.data} progress={progress} currentId={selectedId} onSelect={selectPath} onStudy={studyOpening} />
     <StudyPanel
       node={anchor}
       outOfBook={outOfBook}
@@ -1035,6 +1047,7 @@ export default function App() {
     >
       <WeakSpots games={mapping.games} stats={mapping.stats} byId={tree.byId} onSelect={selectPath} />
     </StudyPanel>
+    </div>
   )
 
   const gamesBlock = (

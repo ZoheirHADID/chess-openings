@@ -129,6 +129,11 @@ Un sélecteur en en-tête choisit ce que la couleur traduit :
   Une seule requête par position déplie tout un étage de branches ; les résultats sont mis en cache.
 
 ### Suivi de progression
+- **Choisir une ouverture à étudier** : en tête de l'onglet Étude, un catalogue des 149 familles et
+  3 810 variantes du référentiel Lichess, avec recherche (nom français ou anglais, variante, code ECO) et
+  parcours par famille (plage ECO, nombre de variantes, nombre déjà à l'étude ou acquises). Un clic sur
+  une ligne l'affiche ; le bouton **Étudier** l'affiche et la marque « à l'étude » (une ligne acquise le
+  reste).
 - Toute branche visitée est automatiquement marquée **explorée** (le chemin parcouru reste visible en couleur).
 - L'utilisateur valide lui-même le statut d'une branche : **à l'étude** ou **acquise**.
 - Le statut se propage visuellement : une branche repliée se colore selon la variante la plus avancée
