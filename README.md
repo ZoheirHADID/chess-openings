@@ -180,7 +180,9 @@ Un sélecteur en en-tête choisit ce que la couleur traduit :
 - **Lichess** : pseudo + API publique.
 - **Chess.com** : pseudo + archives mensuelles publiques ; l'import **remonte tout l'historique**, du mois
   le plus récent au plus ancien, avec l'avancement affiché mois par mois.
-- Quantité réglable : **100, 500, 2 000 ou 5 000 parties**. Les deux pseudos sont mémorisés séparément.
+- **Nombre de dernières parties libre** (champ numérique, 500 par défaut, mémorisé) : l'import remonte
+  l'historique des plus récentes aux plus anciennes jusqu'à ce nombre. Les deux pseudos sont mémorisés
+  séparément.
 - **Depuis un PGN** : sélection de fichier, collage direct, ou **glisser-déposer** du `.pgn` n'importe où
   sur la page. Les parties depuis position personnalisée et les variantes non standard sont écartées.
 - Chaque partie est rejouée et placée sur la branche théorique la plus profonde qu'elle atteint ;

@@ -47,6 +47,7 @@ const shortId = (game: ImportedGame): string => {
 }
 
 const COLOR_MARK: Record<'white' | 'black', string> = { white: '○', black: '●' }
+const LIMIT_KEY = 'chess-openings:import-limit'
 
 const resultBadge = (game: ImportedGame) => {
   if (game.result === '1/2-1/2') return { label: 'Nulle', color: 'bg-slate-600' }
@@ -68,7 +69,27 @@ export default function GamesPanel({
   onClear,
 }: Props) {
   const [platform, setPlatform] = useState<Platform>('lichess')
-  const [limit, setLimit] = useState(500)
+  /** Nombre de dernieres parties a recuperer : libre, memorise (500 par defaut). */
+  const [limit, setLimit] = useState(() => {
+    try {
+      const saved = Number(localStorage.getItem(LIMIT_KEY))
+      return Number.isFinite(saved) && saved >= 1 ? Math.floor(saved) : 500
+    } catch {
+      return 500
+    }
+  })
+  const [limitText, setLimitText] = useState(String(limit))
+  const commitLimit = (raw: string) => {
+    const value = Math.floor(Number(raw))
+    const next = Number.isFinite(value) && value >= 1 ? Math.min(value, 100_000) : limit
+    setLimit(next)
+    setLimitText(String(next))
+    try {
+      localStorage.setItem(LIMIT_KEY, String(next))
+    } catch {
+      /* stockage indisponible */
+    }
+  }
   const [pgnText, setPgnText] = useState('')
   const [loading, setLoading] = useState(false)
   const [progressLabel, setProgressLabel] = useState<string | null>(null)
@@ -141,26 +162,31 @@ export default function GamesPanel({
             placeholder={`Pseudo ${active.label}`}
             className="min-w-0 flex-1 rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-sm text-slate-100 placeholder:text-slate-500 focus:border-blue-500 focus:outline-none"
           />
-          <select
-            value={limit}
-            onChange={(e) => setLimit(Number(e.target.value))}
-            className="shrink-0 rounded-lg border border-slate-700 bg-slate-900 px-1.5 py-1.5 text-xs text-slate-200 focus:border-blue-500 focus:outline-none"
-            aria-label="Nombre de parties à importer"
-          >
-            {[100, 500, 2000, 5000].map((value) => (
-              <option key={value} value={value}>
-                {value}
-              </option>
-            ))}
-          </select>
+          <input
+            type="number"
+            inputMode="numeric"
+            min={1}
+            max={100000}
+            step={1}
+            value={limitText}
+            onChange={(e) => setLimitText(e.target.value)}
+            onBlur={(e) => commitLimit(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && commitLimit((e.target as HTMLInputElement).value)}
+            className="w-20 shrink-0 rounded-lg border border-slate-700 bg-slate-900 px-2 py-1.5 text-right text-sm text-slate-200 tabular-nums focus:border-blue-500 focus:outline-none"
+            aria-label="Nombre de dernières parties à récupérer"
+            title="Nombre de dernières parties à récupérer (libre)"
+          />
           <button
-            onClick={() =>
-              runImport(() =>
+            onClick={() => {
+              const value = Math.floor(Number(limitText))
+              const count = Number.isFinite(value) && value >= 1 ? Math.min(value, 100_000) : limit
+              commitLimit(String(count))
+              void runImport(() =>
                 platform === 'lichess'
-                  ? fetchLichessGames(username, limit, onProgress)
-                  : fetchChessComGames(username, limit, onProgress),
+                  ? fetchLichessGames(username, count, onProgress)
+                  : fetchChessComGames(username, count, onProgress),
               )
-            }
+            }}
             disabled={loading || !username.trim()}
             className="shrink-0 rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-blue-500 disabled:opacity-40"
           >
@@ -168,8 +194,9 @@ export default function GamesPanel({
           </button>
         </div>
         <p className="text-[11px] text-slate-500">
-          {active.hint} L’import remonte tout l’historique jusqu’au nombre de parties choisi, et chaque partie est
-          replacée automatiquement sur la branche d’ouverture jouée.
+          {active.hint} Indiquez librement le nombre de dernières parties à récupérer : l’import remonte
+          l’historique, des plus récentes aux plus anciennes, jusqu’à ce nombre, et chaque partie est replacée
+          automatiquement sur la branche d’ouverture jouée.
         </p>
         {progressLabel && (
           <p className="flex items-center gap-2 text-[11px] text-blue-300">
