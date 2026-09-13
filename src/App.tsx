@@ -14,13 +14,16 @@ import { PieceSprite } from './components/pieces'
 import OpeningName from './components/OpeningName'
 import { frName } from './lib/frenchNames'
 import { aggregateDeviations, deviationKey, type TheoryGap } from './lib/deviations'
-import { engine, judgeMove, QUALITY_BADGE } from './lib/engine'
+import { engine, formatEval, judgeMove, pairEvals, QUALITY_BADGE, scoreFor, type EngineSnapshot } from './lib/engine'
+import { fetchCloudEval, getCloudEval, subscribeCloud, toStoredEval } from './lib/cloudEval'
+import { practicalNote } from './lib/practical'
+import { useDocs } from './lib/docs'
 import { useEngine } from './lib/useEngine'
 import { positionFromSans } from './lib/chess'
 import { isResolved, totalOf, useMoveStats } from './lib/moveStats'
 import { explainMove } from './lib/explain'
 import { explainFault } from './lib/refutation'
-import { buildFaultPrompt } from './lib/aiExplain'
+import { buildFaultPrompt, buildMovePrompt } from './lib/aiExplain'
 import { chooseReply, STRATEGY_LABEL, STRATEGY_TITLE, type TrainingScore, type TrainingStrategy } from './lib/training'
 import { videoLinkFor } from './data/openingVideos'
 import { buildTree, followSans, nearestNamed, type TreeIndex } from './lib/tree'
@@ -292,10 +295,34 @@ export default function App() {
   const bestLine = engineSnapshot?.fen === position.fen ? engineSnapshot.lines[0] : undefined
 
   /** Position precedente : le moteur l'evalue aussi, pour juger le coup joue. */
-  const parentFen = useMemo(
-    () => (line.length > 0 ? positionFromSans(line.slice(0, -1)).fen : null),
-    [line],
+  const parentPosition = useMemo(() => (line.length > 0 ? positionFromSans(line.slice(0, -1)) : null), [line])
+  const parentFen = parentPosition?.fen ?? null
+
+  /**
+   * Evaluation cloud Lichess (positions connues, analysees a grande profondeur)
+   * pour la position courante et la precedente : elle sert de reference au
+   * jugement du coup, a la barre d'evaluation moteur eteint et au panneau moteur.
+   */
+  const [cloudVersion, setCloudVersion] = useState(0)
+  useEffect(() => subscribeCloud(() => setCloudVersion((n) => n + 1)), [])
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      void fetchCloudEval(position.fen)
+      if (parentFen) void fetchCloudEval(parentFen)
+    }, 200)
+    return () => clearTimeout(timer)
+  }, [position.fen, parentFen])
+  // cloudVersion : les evaluations cloud arrivent de facon asynchrone
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const cloudEval = useMemo(() => getCloudEval(position.fen) ?? null, [position.fen, cloudVersion])
+  /** Barre d'evaluation : le moteur local s'il tourne, sinon le cloud Lichess. */
+  const cloudSnapshot = useMemo<EngineSnapshot | null>(
+    () => (cloudEval ? { fen: cloudEval.fen, depth: cloudEval.depth, lines: cloudEval.lines, thinking: false, version: 0 } : null),
+    [cloudEval],
   )
+  const barSnapshot = engineOn ? engineSnapshot : cloudSnapshot
+  const barEnabled = engineOn || cloudSnapshot !== null
+  const barSource = engineOn ? 'Stockfish' : 'cloud Lichess'
   /**
    * Le dernier coup est toujours juge. Moteur allume, l'analyse principale evalue
    * la position courante et seule la precedente est demandee en arriere-plan.
@@ -318,18 +345,54 @@ export default function App() {
     }
   }, [])
 
+  /**
+   * Paire d'evaluations (avant / apres le coup) la plus coherente : cloud
+   * Lichess des deux cotes si possible, sinon Stockfish local des deux cotes.
+   */
+  const evalPair = useMemo(
+    () =>
+      parentFen
+        ? pairEvals(
+            engine.getEval(parentFen),
+            engine.getEval(position.fen),
+            toStoredEval(getCloudEval(parentFen)),
+            toStoredEval(getCloudEval(position.fen)),
+          )
+        : ([undefined, undefined] as const),
+    // evalVersion / cloudVersion servent de signal : les evaluations arrivent au fil du calcul
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [parentFen, position.fen, evalVersion, cloudVersion],
+  )
+
   /** Jugement du coup joue : comparaison des evaluations avant / apres. */
   const verdict = useMemo(() => {
     if (!parentFen || line.length === 0) return null
-    return judgeMove(
-      engine.getEval(parentFen),
-      engine.getEval(position.fen),
-      line.length % 2 === 1 ? 'w' : 'b',
-      line[line.length - 1],
-      { fenBefore: parentFen, inBook: !outOfBook },
-    )
-    // evalVersion sert de signal : les evaluations arrivent au fil du calcul
-  }, [parentFen, position.fen, line, outOfBook, evalVersion])
+    return judgeMove(evalPair[0], evalPair[1], line.length % 2 === 1 ? 'w' : 'b', line[line.length - 1], {
+      fenBefore: parentFen,
+      inBook: !outOfBook,
+    })
+  }, [parentFen, line, outOfBook, evalPair])
+
+  /**
+   * Score pratique du coup joue : bilan Lichess du coup (et de ses freres, pour
+   * la popularite) face aux chances de gain attendues par le moteur.
+   */
+  const mover: 'w' | 'b' = line.length % 2 === 1 ? 'w' : 'b'
+  const parentId = line.slice(0, -1).join(' ')
+  const siblingStats = parentPosition
+    ? parentPosition.legal.map((san) => moveStats.get(parentId ? `${parentId} ${san}` : san)).filter((s) => !!s)
+    : []
+  // Les bilans arrivent dans une Map stable : cette cle change quand ils sont la
+  const siblingStatsKey = siblingStats.map(totalOf).join(',')
+  const practical = useMemo(() => {
+    if (line.length === 0) return null
+    return practicalNote(moveStats.get(selectedId), siblingStats, mover, scoreFor(evalPair[1], mover))
+    // siblingStatsKey : signal d'arrivee des bilans
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [line.length, selectedId, mover, evalPair, moveStats, siblingStatsKey])
+
+  /** Sources documentaires : Wikibooks pour la ligne exacte, Wikipédia pour l'ouverture. */
+  const docs = useDocs(line, named?.family ? frName(named.family) : undefined)
 
   /** Pastille du dernier coup : verdict du moteur, sinon « théorie » si le coup est dans l'arbre. */
   const moveBadge = useMemo(() => {
@@ -372,14 +435,13 @@ export default function App() {
             fenAfter: position.fen,
             playedSan: line[line.length - 1],
             verdict,
-            before: engine.getEval(parentFen),
-            after: engine.getEval(position.fen),
+            before: evalPair[0],
+            after: evalPair[1],
             bestLine,
             warnings: explanation?.warnings,
           })
         : null,
-    // evalVersion : les evaluations (et leurs variantes) arrivent au fil du calcul
-    [parentFen, position.fen, line, verdict, bestLine, explanation, evalVersion],
+    [parentFen, position.fen, line, verdict, bestLine, explanation, evalPair],
   )
   const aiPrompt = useMemo(
     () =>
@@ -396,6 +458,36 @@ export default function App() {
         : null,
     [fault, verdict, parentFen, line, position.fen, named],
   )
+  /**
+   * Requete d'explication d'un coup non fautif, ancree sur toutes les sources :
+   * commentaire theorique, motifs, verdict, variantes (cloud de preference, sinon
+   * moteur local une fois l'analyse terminee), score pratique et extrait Wikibooks.
+   */
+  const movePrompt = useMemo(() => {
+    if (!explanation || line.length === 0 || fault) return null
+    const source = cloudEval?.lines.length
+      ? { source: 'cloud Lichess', depth: cloudEval.depth, lines: cloudEval.lines }
+      : engineSnapshot && engineSnapshot.fen === position.fen && !engineSnapshot.thinking && engineSnapshot.lines.length
+        ? { source: 'Stockfish local', depth: engineSnapshot.depth, lines: engineSnapshot.lines }
+        : undefined
+    return buildMovePrompt({
+      openingName: named?.name,
+      sans: line,
+      numbered: explanation.numbered,
+      fenAfter: position.fen,
+      theoryNote: explanation.note,
+      plan: explanation.plan,
+      points: explanation.points,
+      warnings: explanation.warnings,
+      verdict: verdict ? { label: verdict.label, best: verdict.best } : undefined,
+      engineLines: source && {
+        ...source,
+        lines: source.lines.slice(0, 3).map((l) => `${l.sans[0]} (${formatEval(l)}) : ${l.sans.join(' ')}`),
+      },
+      practical,
+      wikibooks: docs.wikibooks?.text,
+    })
+  }, [explanation, line, fault, cloudEval, engineSnapshot, position.fen, named, verdict, practical, docs.wikibooks])
 
   // La branche parcourue est memorisee et depliee automatiquement. En mode
   // entrainement, les suites du noeud courant restent repliees pendant le tour
@@ -609,6 +701,7 @@ export default function App() {
       compact
       verdict={verdict}
       fault={fault}
+      practical={practical}
       aiPrompt={aiPrompt}
       theoryGap={theoryGap}
       onPlayTheory={playTheory}
@@ -711,7 +804,7 @@ export default function App() {
         className="mx-auto flex w-full gap-1.5"
         style={{ containerType: 'inline-size' }}
       >
-        <EvalBar snapshot={engineSnapshot} orientation={orientation} enabled={engineOn} />
+        <EvalBar snapshot={barSnapshot} orientation={orientation} enabled={barEnabled} source={barSource} />
         <div className="min-w-0 flex-1">
           <Chessboard
             position={position}
@@ -868,6 +961,8 @@ export default function App() {
         outOfBook={outOfBook}
         onPlayMove={playMove}
         failure={engine.failure}
+        cloud={cloudEval}
+        mover={position.turn}
       />
     </div>
   )
@@ -921,7 +1016,7 @@ export default function App() {
         className="mx-auto flex w-full gap-1.5 px-1"
         style={{ containerType: 'inline-size', maxWidth: 'max(16rem, calc(100dvh - 8rem))' }}
       >
-        <EvalBar snapshot={engineSnapshot} orientation={orientation} enabled={engineOn} />
+        <EvalBar snapshot={barSnapshot} orientation={orientation} enabled={barEnabled} source={barSource} />
         <div className="min-w-0 flex-1">
           <Chessboard
             position={position}
@@ -1037,7 +1132,29 @@ export default function App() {
     </div>
   )
 
-  const explorerBlock = <ExplorerPanel uci={position.uci} knownSans={knownSans} onPlayMove={playMove} />
+  /**
+   * Onglet Analyse : explication complete du coup (theorie, verdict, faute, score
+   * pratique, IA, sources documentaires) puis statistiques de l'explorateur.
+   */
+  const explorerBlock = (
+    <div className="space-y-4">
+      <ExplainPanel
+        explanation={explanation}
+        openingName={named?.name}
+        eco={named?.eco}
+        outOfBook={outOfBook}
+        verdict={verdict}
+        fault={fault}
+        practical={practical}
+        docs={docs}
+        movePrompt={movePrompt}
+        aiPrompt={aiPrompt}
+        theoryGap={theoryGap}
+        onPlayTheory={playTheory}
+      />
+      <ExplorerPanel uci={position.uci} knownSans={knownSans} onPlayMove={playMove} />
+    </div>
+  )
 
   const treeBlock = (
     <OpeningTree
@@ -1067,7 +1184,7 @@ export default function App() {
   const tabs: { id: PanelTab; label: string }[] = [
     { id: 'study', label: 'Étude' },
     { id: 'games', label: `Parties${games.length ? ` (${games.length})` : ''}` },
-    { id: 'explorer', label: 'Lichess' },
+    { id: 'explorer', label: 'Analyse' },
   ]
 
   return (
@@ -1242,7 +1359,7 @@ export default function App() {
               [
                 { id: 'tree', label: 'Arbre', icon: '🌳' },
                 { id: 'study', label: 'Étude', icon: '🎯' },
-                { id: 'explorer', label: 'Lichess', icon: '📊' },
+                { id: 'explorer', label: 'Analyse', icon: '🔬' },
                 { id: 'games', label: 'Parties', icon: '📥' },
               ] as const
             ).map((item) => (

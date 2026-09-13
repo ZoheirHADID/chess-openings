@@ -98,6 +98,16 @@ les résultats réels, et analyse **Stockfish** dès que la partie sort de la th
 - Trois meilleures variantes affichées avec leur évaluation, cliquables pour être jouées.
 - Dès que la ligne sort du répertoire, le moteur met en avant le meilleur coup de la position.
 - Le moteur est désactivé par défaut et se charge à la demande (le choix est mémorisé).
+- **Cloud Lichess** : pour toute position connue de lichess.org, l'évaluation cloud (souvent 40 à 60
+  demi-coups de profondeur, calculée par les serveurs Lichess) est récupérée instantanément et affichée
+  sous les variantes locales. Moteur éteint, elle alimente la barre d'évaluation ; elle sert aussi de
+  référence au jugement des coups.
+- **Jugement cohérent** : le coup joué est comparé sur deux évaluations de même origine (cloud des deux
+  côtés si possible, sinon Stockfish local des deux côtés) pour ne pas mélanger profondeurs et versions de
+  moteur. Le bandeau de verdict indique l'origine (⚙ local, ☁ cloud) et la profondeur.
+- **Criticité de la position** : écart de chances de gain entre le meilleur coup et le second (sur
+  l'analyse la plus profonde disponible) : *position critique* (un seul coup tient), *tranchante* ou
+  *souple*.
 
 ### Couleur des branches : progression ou résultats
 Un sélecteur en en-tête choisit ce que la couleur traduit :
@@ -183,9 +193,26 @@ Un sélecteur en en-tête choisit ce que la couleur traduit :
   deux boutons `○` / `●` sur la ligne de la partie choisissent le camp à étudier, et ce choix est
   mémorisé. Sur mobile, un rappel de la partie suivie s'affiche sous l'échiquier.
 
-### Statistiques Lichess
-Pour la position courante, l'onglet *Lichess* interroge l'**Opening Explorer** (parties blitz / rapide /
-classique, Elo 1600+) : répartition des résultats et coups les plus joués, cliquables pour naviguer dans l'arbre.
+### Onglet Analyse : moteur, statistiques, sources et IA
+L'onglet *Analyse* rassemble tout ce que l'application sait du dernier coup joué.
+- **Explication complète** du coup (commentaire théorique, verdict du moteur, pourquoi c'est une faute,
+  ce que le coup apporte et concède, plan de l'ouverture, écart de théorie).
+- **Score pratique (Lichess)** : ce que les humains tirent réellement du coup (points marqués sur les
+  parties Lichess, popularité et rang parmi les coups de la position) confronté aux chances de gain
+  attendues par le moteur. Un écart d'au moins 8 points révèle un **coup piégeux** (les humains font bien
+  mieux que le moteur ne l'annonce : l'adversaire se trompe souvent) ou un **coup ingrat** (correct pour
+  le moteur, difficile à jouer). En dessous de 50 parties, le bilan est signalé comme trop mince.
+- **Expliquer ce coup avec l'IA** : pour tout coup (pas seulement les fautes), la requête envoyée au
+  fournisseur d'IA est ancrée sur toutes les sources disponibles : commentaire théorique, motifs, verdict,
+  variantes du cloud Lichess (à défaut du moteur local, une fois l'analyse terminée), score pratique et
+  extrait Wikibooks. Le modèle n'est autorisé à citer que des coups présents dans ces données.
+- **Sources documentaires** : l'article **Wikibooks « Chess Opening Theory »** de la position exacte
+  (anglais, CC BY-SA, nettoyé du balisage et tronqué à ~1 400 caractères) avec un bouton *Traduire et
+  résumer avec l'IA*, et le résumé de l'article **Wikipédia en français** de l'ouverture (retrouvé par
+  son nom français, avec vignette). Les deux sont mis en cache dans le navigateur.
+- **Opening Explorer** : répartition des résultats et coups les plus joués, cliquables pour naviguer
+  dans l'arbre, sur deux bases au choix : **Amateurs** (parties Lichess blitz / rapide / classique,
+  Elo 1600+) ou **Maîtres** (parties de tournoi, Elo 2200+). Le choix est mémorisé.
 
 ### Responsive
 - **Bureau** : panneau latéral fixe (échiquier, liste de coups, onglets Étude / Parties / Lichess) et arbre plein cadre.
@@ -239,7 +266,10 @@ npm run preview
 - **Ouvertures** : [`lichess-org/chess-openings`](https://github.com/lichess-org/chess-openings) (CC0),
   3 810 variantes de A00 à E99, jusqu'à 36 demi-coups. Les TSV sources sont conservés dans `data/raw/`
   et l'arbre compilé dans `public/openings.json` (1,2 Mo, ~180 Ko une fois compressé).
-- **Statistiques et parties** : API publiques de [lichess.org](https://lichess.org/api), sans authentification.
+- **Statistiques, évaluations cloud et parties** : API publiques de [lichess.org](https://lichess.org/api)
+  (Opening Explorer amateurs et maîtres, cloud-eval), sans authentification.
+- **Sources documentaires** : [Wikibooks Chess Opening Theory](https://en.wikibooks.org/wiki/Chess_Opening_Theory)
+  et [Wikipédia en français](https://fr.wikipedia.org) (CC BY-SA), via les API MediaWiki.
 - **Pièces** : jeu Cburnett ([CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/)), repris de
   `lichess-org/lila`. Sources dans `data/pieces/`, compilées en sprite SVG.
 - **Moteur** : [Stockfish.js 18](https://github.com/nmrugg/stockfish.js) (GPL-3.0), copié depuis
@@ -272,4 +302,7 @@ Stack : React 19, TypeScript, Vite 7, Tailwind CSS 4, chess.js, d3-hierarchy, St
 
 Aucun compte, aucun serveur applicatif : progression, parties importées et réglages restent dans le
 `localStorage` du navigateur. Le moteur tourne localement. Les seuls appels réseau sortants sont les API
-publiques de lichess.org et api.chess.com, uniquement quand vous demandez un import ou les statistiques.
+publiques de lichess.org (statistiques, évaluations cloud) et api.chess.com (import), ainsi que les API de
+Wikibooks et Wikipédia pour les sources documentaires. Aucune donnée personnelle n'y transite : seules la
+position (FEN ou coups) et le nom de l'ouverture sont envoyés. L'IA générative n'est sollicitée que sur
+demande, avec votre propre clé.

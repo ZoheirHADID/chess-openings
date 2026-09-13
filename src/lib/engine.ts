@@ -45,7 +45,11 @@ export interface StoredEval {
   pv?: string[]
   /** Seconde meilleure variante (MultiPV 2) : sert a reperer le seul bon coup. */
   second?: { cp: number | null; mate: number | null }
+  /** Origine : Stockfish local (defaut) ou evaluation cloud Lichess. */
+  source?: EvalSource
 }
+
+export type EvalSource = 'local' | 'cloud'
 
 type Listener = (snapshot: EngineSnapshot) => void
 
@@ -55,7 +59,7 @@ const SIDE_DEPTH = 14
 export const JUDGE_MIN_DEPTH = 10
 
 /** Convertit une variante UCI en coups algebriques lisibles. */
-function uciToSans(fen: string, uciMoves: string[], limit = 6): string[] {
+export function uciToSans(fen: string, uciMoves: string[], limit = 6): string[] {
   const chess = new Chess(fen)
   const sans: string[] = []
   for (const uci of uciMoves.slice(0, limit)) {
@@ -372,6 +376,10 @@ export interface MoveVerdict {
   /** Coup que le moteur aurait joue. */
   best?: string
   label: string
+  /** Origine des deux evaluations comparees. */
+  source: EvalSource | 'mixed'
+  /** Profondeurs des evaluations avant / apres le coup. */
+  depths: [number, number]
 }
 
 export const QUALITY_LABEL: Record<MoveQuality, string> = {
@@ -506,11 +514,52 @@ export function judgeMove(
   // Coup de theorie : pastille « livre » comme sur chess.com, sauf si le moteur y voit une faute
   if (context.inBook && !FAULTS.has(quality)) quality = 'book'
 
+  const source: MoveVerdict['source'] =
+    (before.source ?? 'local') === (after.source ?? 'local') ? (before.source ?? 'local') : 'mixed'
+
   return {
     quality,
     loss,
     drop,
     best: before?.bestSan,
     label: QUALITY_LABEL[quality],
+    source,
+    depths: [before.depth, after.depth],
   }
+}
+
+/**
+ * Choisit la paire d'evaluations la plus coherente pour juger un coup : deux
+ * evaluations de meme origine (cloud Lichess, sinon Stockfish local) plutot
+ * qu'un melange de profondeurs et de versions de moteur, qui fausse l'ecart.
+ */
+export function pairEvals(
+  localBefore: StoredEval | undefined,
+  localAfter: StoredEval | undefined,
+  cloudBefore: StoredEval | undefined,
+  cloudAfter: StoredEval | undefined,
+): [StoredEval | undefined, StoredEval | undefined] {
+  if (cloudBefore && cloudAfter) return [cloudBefore, cloudAfter]
+  const settled = (e?: StoredEval) => !!e && e.depth >= JUDGE_MIN_DEPTH
+  if (settled(localBefore) && settled(localAfter)) return [localBefore, localAfter]
+  // Une seule origine complete : on complete avec l'autre, la plus profonde
+  const deeper = (a?: StoredEval, b?: StoredEval) => (!a ? b : !b ? a : b.depth > a.depth ? b : a)
+  return [deeper(localBefore, cloudBefore), deeper(localAfter, cloudAfter)]
+}
+
+/**
+ * Criticite d'une position d'apres les variantes du moteur : ecart de chances
+ * de gain entre le meilleur coup et le second. Grand ecart = un seul coup tient.
+ */
+export function sharpness(
+  lines: EngineLine[],
+  mover: 'w' | 'b',
+): { gap: number; level: 'critical' | 'sharp' | 'flexible' } | null {
+  const [first, second] = lines
+  if (!first || !second || first.depth < JUDGE_MIN_DEPTH) return null
+  const a = scoreFor(first, mover)
+  const b = scoreFor(second, mover)
+  if (a === null || b === null) return null
+  const gap = winPercent(a) - winPercent(b)
+  return { gap, level: gap >= 10 ? 'critical' : gap >= 4 ? 'sharp' : 'flexible' }
 }

@@ -11,8 +11,14 @@ import {
 } from '../lib/aiExplain'
 
 interface Props {
-  /** Requete construite a partir des faits Stockfish. */
+  /** Requete construite a partir des faits calcules (moteur, statistiques, sources). */
   prompt: string
+  /** Consigne systeme : explication de faute (defaut), explication de coup ou traduction. */
+  system?: string
+  /** Libelle du bouton. */
+  label?: string
+  /** Origine des donnees, rappelee sous le texte genere. */
+  footnote?: string
   compact?: boolean
 }
 
@@ -21,7 +27,13 @@ interface Props {
  * l'utilisateur, conservee dans le navigateur). Le texte est genere a la
  * demande et mis en cache pour la position.
  */
-export default function AiExplain({ prompt, compact }: Props) {
+export default function AiExplain({
+  prompt,
+  system,
+  label = 'Expliquer avec l’IA',
+  footnote = 'à partir des données Stockfish',
+  compact,
+}: Props) {
   const [settings, setSettings] = useState<AiSettings>(loadAiSettings)
   const [configOpen, setConfigOpen] = useState(false)
   const [text, setText] = useState<string | null>(null)
@@ -45,7 +57,7 @@ export default function AiExplain({ prompt, compact }: Props) {
     setLoading(true)
     setError(null)
     try {
-      setText(await askAi(settings, prompt))
+      setText(await askAi(settings, prompt, undefined, system))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Échec de la requête')
     } finally {
@@ -73,7 +85,7 @@ export default function AiExplain({ prompt, compact }: Props) {
           className={`rounded-md border border-indigo-600/70 px-2 py-1 font-medium text-indigo-100 hover:bg-indigo-900/40 disabled:opacity-50 ${small}`}
           title={configured ? `Demander une explication à ${preset.label}` : 'Configurer un fournisseur d’IA gratuit'}
         >
-          {loading ? '✨ Analyse en cours…' : text ? '✨ Regénérer' : '✨ Expliquer avec l’IA'}
+          {loading ? '✨ Analyse en cours…' : text ? '✨ Regénérer' : `✨ ${label}`}
         </button>
         <button
           onClick={() => setConfigOpen((open) => !open)}
@@ -161,7 +173,9 @@ export default function AiExplain({ prompt, compact }: Props) {
                 {paragraph}
               </p>
             ))}
-          <p className="text-[9px] text-indigo-300/70">Généré par {settings.model} à partir des données Stockfish — à vérifier.</p>
+          <p className="text-[9px] text-indigo-300/70">
+            Généré par {settings.model} {footnote} — à vérifier.
+          </p>
         </div>
       )}
     </section>

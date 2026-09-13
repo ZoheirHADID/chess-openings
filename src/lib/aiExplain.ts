@@ -1,4 +1,5 @@
 import type { FaultExplanation } from './refutation'
+import type { PracticalNote } from './practical'
 
 /**
  * Explication d'une faute par une IA generative, via une API compatible
@@ -87,12 +88,26 @@ export function defaultSettings(provider: AiProvider): AiSettings {
 
 export const needsKey = (provider: AiProvider) => provider !== 'ollama'
 
-const SYSTEM_PROMPT = `Tu es un entraîneur d'échecs pédagogue. Tu expliques en français, à un joueur de club, pourquoi le coup qu'il vient de jouer est fautif et ce qu'il fallait jouer.
+export const FAULT_SYSTEM_PROMPT = `Tu es un entraîneur d'échecs pédagogue. Tu expliques en français, à un joueur de club, pourquoi le coup qu'il vient de jouer est fautif et ce qu'il fallait jouer.
 Règles :
 - Appuie-toi UNIQUEMENT sur les données Stockfish fournies (évaluations, meilleur coup, variantes). N'invente aucun coup ni variante qui n'y figure pas.
 - Explique l'idée concrète : quelle menace, quel gain de temps, quelle faiblesse, quelle pièce mal placée.
 - 4 à 6 phrases, sans liste, sans titre, sans formule de politesse. Notation algébrique française acceptée (les coups fournis sont en notation anglaise : N = cavalier, B = fou, R = tour, Q = dame, K = roi).
 - Termine par une phrase « À retenir : … » avec le principe général.`
+
+export const MOVE_SYSTEM_PROMPT = `Tu es un entraîneur d'échecs pédagogue. Tu expliques en français, à un joueur de club, l'idée du coup d'ouverture qu'il vient de jouer.
+Règles :
+- Appuie-toi UNIQUEMENT sur les données fournies : commentaire théorique, extrait Wikibooks, statistiques Lichess, variantes du moteur. Ne cite aucun coup ni variante qui n'y figure pas.
+- Explique l'idée concrète du coup (centre, développement, pression, structure), le plan qui en découle pour les deux camps, et la ou les réponses habituelles.
+- Si les statistiques révèlent un coup piégeux ou ingrat, dis-le et explique pourquoi.
+- 5 à 7 phrases, sans liste, sans titre, sans formule de politesse. Les coups fournis sont en notation anglaise (N = cavalier, B = fou, R = tour, Q = dame, K = roi).
+- Termine par une phrase « À retenir : … » avec le principe général.`
+
+export const DOCS_SYSTEM_PROMPT = `Tu es un traducteur spécialisé en échecs. On te fournit un extrait en anglais de l'encyclopédie Wikibooks « Chess Opening Theory ».
+Règles :
+- Traduis-le et résume-le fidèlement en français, en 3 à 5 phrases, sans rien ajouter ni inventer.
+- Garde les coups en notation anglaise telle quelle (N = cavalier, B = fou, R = tour, Q = dame, K = roi).
+- Pas de liste, pas de titre, pas de formule de politesse.`
 
 export interface FaultPromptContext {
   fault: FaultExplanation
@@ -128,11 +143,63 @@ export function buildFaultPrompt(ctx: FaultPromptContext): string {
   return lines.filter(Boolean).join('\n')
 }
 
+export interface MovePromptContext {
+  openingName?: string
+  /** Coups joues, dernier compris. */
+  sans: string[]
+  numbered: string
+  fenAfter: string
+  theoryNote?: string
+  plan?: string
+  points: string[]
+  warnings: string[]
+  /** Verdict du moteur sur le coup (« Théorie », « Bon coup »…) et son meilleur coup. */
+  verdict?: { label: string; best?: string }
+  /** Variantes du moteur depuis la position obtenue : « e5 (+0,2) : e5 Nf3 Nc6 … ». */
+  engineLines?: { source: string; depth: number; lines: string[] }
+  practical?: PracticalNote | null
+  /** Extrait Wikibooks (anglais) de la position. */
+  wikibooks?: string
+}
+
+/** Requete d'explication d'un coup quelconque, ancree sur toutes les sources disponibles. */
+export function buildMovePrompt(ctx: MovePromptContext): string {
+  const lines = [
+    `Ouverture : ${ctx.openingName ?? 'inconnue'}.`,
+    `Coups joués : ${ctx.sans.join(' ')}. Coup à expliquer : ${ctx.numbered}.`,
+    `Position obtenue (FEN) : ${ctx.fenAfter}`,
+    ctx.verdict ? `Verdict du moteur : « ${ctx.verdict.label} »${ctx.verdict.best ? ` (meilleur coup : ${ctx.verdict.best})` : ''}.` : '',
+    ctx.theoryNote ? `Commentaire théorique : ${ctx.theoryNote}` : '',
+    ctx.plan ? `Plan de la famille : ${ctx.plan}` : '',
+    ctx.points.length ? `Motifs repérés dans la position : ${ctx.points.join(' ')}` : '',
+    ctx.warnings.length ? `Concessions repérées : ${ctx.warnings.join(' ')}` : '',
+    ctx.engineLines && ctx.engineLines.lines.length
+      ? `Variantes du moteur (${ctx.engineLines.source}, profondeur ${ctx.engineLines.depth}) depuis la position obtenue : ${ctx.engineLines.lines.join(' | ')}`
+      : '',
+    ctx.practical
+      ? `Statistiques Lichess : ${ctx.practical.headline}. ${ctx.practical.detail}`
+      : '',
+    ctx.wikibooks ? `Extrait Wikibooks (anglais) : ${ctx.wikibooks}` : '',
+    'Explique l’idée de ce coup, le plan qui en découle et les réponses habituelles.',
+  ]
+  return lines.filter(Boolean).join('\n')
+}
+
+/** Requete de traduction / resume d'un extrait Wikibooks. */
+export function buildDocsPrompt(excerpt: string, title: string): string {
+  return `Article : ${title}\nExtrait : ${excerpt}\nTraduis et résume cet extrait en français.`
+}
+
 const cache = new Map<string, string>()
 
-/** Interroge le fournisseur ; la reponse est mise en cache par requete et modele. */
-export async function askAi(settings: AiSettings, prompt: string, signal?: AbortSignal): Promise<string> {
-  const cacheKey = `${settings.model}|${prompt}`
+/** Interroge le fournisseur ; la reponse est mise en cache par requete, consigne et modele. */
+export async function askAi(
+  settings: AiSettings,
+  prompt: string,
+  signal?: AbortSignal,
+  system: string = FAULT_SYSTEM_PROMPT,
+): Promise<string> {
+  const cacheKey = `${settings.model}|${system.length}|${prompt}`
   const cached = cache.get(cacheKey)
   if (cached) return cached
 
@@ -153,7 +220,7 @@ export async function askAi(settings: AiSettings, prompt: string, signal?: Abort
       temperature: 0.4,
       max_tokens: 600,
       messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'system', content: system },
         { role: 'user', content: prompt },
       ],
     }),

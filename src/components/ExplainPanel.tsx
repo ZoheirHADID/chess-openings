@@ -6,6 +6,104 @@ import AiExplain from './AiExplain'
 import OpeningName from './OpeningName'
 import { frName } from '../lib/frenchNames'
 import type { TheoryGap } from '../lib/deviations'
+import type { PracticalNote } from '../lib/practical'
+import type { Docs } from '../lib/docs'
+import { DOCS_SYSTEM_PROMPT, MOVE_SYSTEM_PROMPT, buildDocsPrompt } from '../lib/aiExplain'
+
+const SOURCE_LABEL: Record<MoveVerdict['source'], string> = {
+  local: 'Stockfish local',
+  cloud: 'cloud Lichess',
+  mixed: 'local + cloud',
+}
+
+const PRACTICAL_STYLE: Record<PracticalNote['verdict'], { box: string; head: string }> = {
+  trap: { box: 'border-violet-700/60 bg-violet-950/25', head: 'text-violet-300' },
+  ungrateful: { box: 'border-amber-700/60 bg-amber-950/20', head: 'text-amber-300' },
+  consistent: { box: 'border-slate-700/70 bg-slate-900/50', head: 'text-slate-400' },
+  sample: { box: 'border-slate-800 bg-slate-900/30', head: 'text-slate-500' },
+}
+
+/** Score pratique : ce que les humains tirent du coup, face a l'attente du moteur. */
+function PracticalBlock({ note, compact }: { note: PracticalNote; compact?: boolean }) {
+  const style = PRACTICAL_STYLE[note.verdict]
+  const text = compact ? 'text-[10px]' : 'text-[11px]'
+  const head = compact ? 'text-[9px]' : 'text-[10px]'
+  return (
+    <section className={`space-y-0.5 rounded-lg border ${style.box} ${compact ? 'p-2' : 'p-2.5'}`}>
+      <p className={`font-semibold tracking-wide uppercase ${style.head} ${head}`}>Score pratique · Lichess</p>
+      <p className={`leading-snug text-slate-100 ${text}`}>{note.headline}</p>
+      {!compact && note.detail && <p className={`leading-snug text-slate-400 ${text}`}>{note.detail}</p>}
+      {!compact && note.expected !== null && note.verdict !== 'sample' && (
+        <div className="flex items-center gap-2 pt-0.5 text-[10px] text-slate-500">
+          <span className="w-16 shrink-0">Pratique</span>
+          <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-800">
+            <span className="block h-full bg-sky-400" style={{ width: `${note.score}%` }} />
+          </span>
+          <span className="w-9 text-right tabular-nums">{Math.round(note.score)} %</span>
+        </div>
+      )}
+      {!compact && note.expected !== null && note.verdict !== 'sample' && (
+        <div className="flex items-center gap-2 text-[10px] text-slate-500">
+          <span className="w-16 shrink-0">Moteur</span>
+          <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-800">
+            <span className="block h-full bg-emerald-500" style={{ width: `${note.expected}%` }} />
+          </span>
+          <span className="w-9 text-right tabular-nums">{Math.round(note.expected)} %</span>
+        </div>
+      )}
+    </section>
+  )
+}
+
+/** Sources documentaires libres : Wikibooks (ligne exacte) et Wikipédia (ouverture). */
+function DocsBlock({ docs }: { docs: Docs }) {
+  const { wikibooks, wikipedia } = docs
+  if (wikibooks === null && wikipedia === null) return null
+  return (
+    <section className="space-y-2">
+      <p className="text-[10px] font-semibold tracking-wide text-slate-500 uppercase">Sources documentaires</p>
+      {wikibooks === undefined && <p className="text-[11px] text-slate-500">Recherche sur Wikibooks…</p>}
+      {wikibooks && (
+        <div className="space-y-1.5 rounded-lg border border-slate-700/70 bg-slate-900/50 p-2.5">
+          <p className="flex flex-wrap items-baseline gap-x-2 text-[10px] text-slate-500">
+            <a href={wikibooks.url} target="_blank" rel="noreferrer" className="font-semibold text-blue-400 hover:text-blue-300">
+              Wikibooks · Chess Opening Theory ↗
+            </a>
+            <span>anglais · {wikibooks.license}</span>
+          </p>
+          {wikibooks.text.split('\n\n').map((paragraph, index) => (
+            <p key={index} className="text-xs leading-relaxed text-slate-300">
+              {paragraph}
+            </p>
+          ))}
+          <AiExplain
+            prompt={buildDocsPrompt(wikibooks.text, wikibooks.title)}
+            system={DOCS_SYSTEM_PROMPT}
+            label="Traduire et résumer avec l’IA"
+            footnote="à partir de l’extrait Wikibooks"
+            compact
+          />
+        </div>
+      )}
+      {wikipedia && (
+        <div className="flex gap-2.5 rounded-lg border border-slate-700/70 bg-slate-900/50 p-2.5">
+          {wikipedia.thumbnail && (
+            <img src={wikipedia.thumbnail} alt="" className="h-16 w-16 shrink-0 rounded object-cover" loading="lazy" />
+          )}
+          <div className="min-w-0 space-y-1">
+            <p className="flex flex-wrap items-baseline gap-x-2 text-[10px] text-slate-500">
+              <a href={wikipedia.url} target="_blank" rel="noreferrer" className="font-semibold text-blue-400 hover:text-blue-300">
+                Wikipédia · {wikipedia.title} ↗
+              </a>
+              <span>{wikipedia.license}</span>
+            </p>
+            <p className="text-xs leading-relaxed text-slate-300">{wikipedia.text}</p>
+          </div>
+        </div>
+      )}
+    </section>
+  )
+}
 
 const VERDICT_STYLE: Record<MoveVerdict['quality'], { bg: string; text: string }> = {
   brilliant: { bg: 'bg-teal-500/20 border-teal-500/60', text: 'text-teal-300' },
@@ -181,6 +279,12 @@ function Verdict({ verdict, compact }: { verdict: MoveVerdict; compact?: boolean
           le moteur jouait <span className="font-mono text-slate-200">{verdict.best}</span>
         </span>
       )}
+      <span
+        className="ml-auto text-[9px] text-slate-500"
+        title={`Évaluations ${SOURCE_LABEL[verdict.source]}, profondeur ${verdict.depths[0]} avant / ${verdict.depths[1]} après`}
+      >
+        {verdict.source === 'cloud' ? '☁' : verdict.source === 'mixed' ? '⚙☁' : '⚙'} prof. {Math.min(...verdict.depths)}
+      </span>
     </p>
   )
 }
@@ -197,6 +301,12 @@ interface Props {
   verdict?: MoveVerdict | null
   /** Pourquoi le coup est fautif (imprécision, erreur, occasion manquée, gaffe). */
   fault?: FaultExplanation | null
+  /** Score pratique du coup (bilan Lichess face à l'attente du moteur). */
+  practical?: PracticalNote | null
+  /** Sources documentaires (Wikibooks, Wikipédia), version complète seulement. */
+  docs?: Docs
+  /** Requête d'explication du coup par IA, ancrée sur toutes les sources (coups non fautifs). */
+  movePrompt?: string | null
   /** Requête prête pour une explication par IA générative, quand le coup est fautif. */
   aiPrompt?: string | null
   /** Le coup affiché quitte la théorie : où est le problème et quel coup théorique jouer. */
@@ -214,6 +324,9 @@ export default function ExplainPanel({
   compact,
   verdict,
   fault,
+  practical,
+  docs,
+  movePrompt,
   aiPrompt,
   theoryGap,
   onPlayTheory,
@@ -247,6 +360,7 @@ export default function ExplainPanel({
         {verdict && <Verdict verdict={verdict} compact />}
         {fault && <FaultBlock fault={fault} compact />}
         {fault && aiPrompt && <AiExplain prompt={aiPrompt} compact />}
+        {practical && practical.verdict !== 'sample' && <PracticalBlock note={practical} compact />}
 
         {explanation.note && (
           <p className="border-l-2 border-emerald-600/70 pl-2 text-[11px] leading-relaxed text-slate-200">
@@ -313,6 +427,15 @@ export default function ExplainPanel({
       {verdict && <Verdict verdict={verdict} />}
       {fault && <FaultBlock fault={fault} />}
       {fault && aiPrompt && <AiExplain prompt={aiPrompt} />}
+      {practical && <PracticalBlock note={practical} />}
+      {!fault && movePrompt && (
+        <AiExplain
+          prompt={movePrompt}
+          system={MOVE_SYSTEM_PROMPT}
+          label="Expliquer ce coup avec l’IA"
+          footnote="à partir de la théorie, des statistiques Lichess, des sources et du moteur"
+        />
+      )}
 
       {explanation.note && (
         <section className="rounded-lg border border-emerald-800/50 bg-emerald-950/20 p-2.5">
@@ -376,14 +499,18 @@ export default function ExplainPanel({
         </p>
       )}
 
-      <a
-        href={explanation.wikibooks}
-        target="_blank"
-        rel="noreferrer"
-        className="inline-block text-xs text-blue-400 hover:text-blue-300"
-      >
-        Théorie détaillée sur Wikibooks ↗
-      </a>
+      {docs ? (
+        <DocsBlock docs={docs} />
+      ) : (
+        <a
+          href={explanation.wikibooks}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-block text-xs text-blue-400 hover:text-blue-300"
+        >
+          Théorie détaillée sur Wikibooks ↗
+        </a>
+      )}
     </div>
   )
 }

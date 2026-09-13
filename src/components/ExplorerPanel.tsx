@@ -1,5 +1,15 @@
 import { useEffect, useState } from 'react'
-import { fetchExplorer, formatCount, totalGames, type ExplorerResult } from '../lib/explorer'
+import {
+  EXPLORER_DB_LABEL,
+  EXPLORER_DB_NOTE,
+  fetchExplorer,
+  formatCount,
+  totalGames,
+  type ExplorerDb,
+  type ExplorerResult,
+} from '../lib/explorer'
+
+const DB_KEY = 'chess-openings:explorer-db'
 
 interface Props {
   uci: string[]
@@ -12,13 +22,18 @@ export default function ExplorerPanel({ uci, onPlayMove, knownSans }: Props) {
   const [data, setData] = useState<ExplorerResult | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [db, setDb] = useState<ExplorerDb>(() => (localStorage.getItem(DB_KEY) as ExplorerDb | null) ?? 'lichess')
+  const chooseDb = (next: ExplorerDb) => {
+    setDb(next)
+    localStorage.setItem(DB_KEY, next)
+  }
 
   useEffect(() => {
     const controller = new AbortController()
     setLoading(true)
     setError(null)
     const timer = setTimeout(() => {
-      fetchExplorer(uci, controller.signal)
+      fetchExplorer(uci, db, controller.signal)
         .then((result) => setData(result))
         .catch((err: unknown) => {
           if (err instanceof DOMException && err.name === 'AbortError') return
@@ -32,15 +47,33 @@ export default function ExplorerPanel({ uci, onPlayMove, knownSans }: Props) {
       clearTimeout(timer)
       setLoading(false)
     }
-  }, [uci])
+  }, [uci, db])
 
   const total = data ? totalGames(data) : 0
 
   return (
     <div className="space-y-3">
-      <div className="flex items-baseline justify-between">
+      <div className="flex items-center justify-between gap-2">
         <h3 className="text-xs font-semibold tracking-wide text-slate-400 uppercase">Statistiques Lichess</h3>
-        {data && <span className="text-xs text-slate-500">{formatCount(total)} parties</span>}
+        <div className="flex items-center gap-2">
+          {data && <span className="text-xs text-slate-500">{formatCount(total)} parties</span>}
+          <div className="flex rounded-md border border-slate-700 p-0.5" role="radiogroup" aria-label="Base de parties">
+            {(Object.keys(EXPLORER_DB_LABEL) as ExplorerDb[]).map((id) => (
+              <button
+                key={id}
+                role="radio"
+                aria-checked={db === id}
+                onClick={() => chooseDb(id)}
+                title={EXPLORER_DB_NOTE[id]}
+                className={`rounded px-1.5 py-0.5 text-[10px] font-medium transition-colors ${
+                  db === id ? 'bg-slate-700 text-slate-100' : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                {EXPLORER_DB_LABEL[id]}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       {loading && !data && <p className="text-xs text-slate-500">Interrogation de l’explorateur Lichess…</p>}
@@ -98,9 +131,7 @@ export default function ExplorerPanel({ uci, onPlayMove, knownSans }: Props) {
               )
             })}
           </ul>
-          <p className="text-[10px] text-slate-600">
-            Parties classées blitz / rapide / classique, Elo 1600+, source lichess.org.
-          </p>
+          <p className="text-[10px] text-slate-600">{EXPLORER_DB_NOTE[db]}</p>
         </>
       )}
     </div>
