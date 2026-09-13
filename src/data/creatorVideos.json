@@ -1,0 +1,1958 @@
+{
+ "generatedAt": "2026-09-13",
+ "channels": [
+  {
+   "id": "juliensong",
+   "name": "Julien Song",
+   "handle": "@JulienSong"
+  },
+  {
+   "id": "marcquenehen",
+   "name": "Marc Quenehen",
+   "handle": "@MarcQuenehen"
+  }
+ ],
+ "entries": [
+  {
+   "families": [
+    "Italian Game"
+   ],
+   "videos": [
+    {
+     "id": "P1Pb7HTKjSY",
+     "title": "LE PLAN à connaitre dans l'ITALIENNE",
+     "channel": "Julien Song",
+     "duration": 1269,
+     "views": 429000,
+     "score": 5.41
+    },
+    {
+     "id": "VqMbrxwRfug",
+     "title": "Progressez dans l'ouverture italienne !",
+     "channel": "Marc Quenehen",
+     "duration": 1335,
+     "views": 122000,
+     "score": 5.27
+    },
+    {
+     "id": "wpIcyDhdGKs",
+     "title": "Ouverture italienne (1) : Partie d'échecs pédagogique",
+     "channel": "Marc Quenehen",
+     "duration": 1461,
+     "views": 104000,
+     "score": 5.25
+    },
+    {
+     "id": "FBIwW5rTk20",
+     "title": "Gambit Evans : variante agressive de l'ouverture italienne",
+     "channel": "Marc Quenehen",
+     "duration": 1666,
+     "views": 97000,
+     "score": 5.25
+    },
+    {
+     "id": "JqxNcQf_kLg",
+     "title": "Le piège que les joueurs d'Italienne / 4 cavaliers se prennent toujours !",
+     "channel": "Julien Song",
+     "duration": 1158,
+     "views": 109000,
+     "score": 4.76
+    },
+    {
+     "id": "ozF5-No14II",
+     "title": "Le piège ULTIME dans l'ITALIENNE pour GAGNER aux échecs !!",
+     "channel": "Julien Song",
+     "duration": 879,
+     "views": 95000,
+     "score": 4.74
+    }
+   ]
+  },
+  {
+   "families": [
+    "Italian Game"
+   ],
+   "name": "Evans",
+   "videos": [
+    {
+     "id": "FBIwW5rTk20",
+     "title": "Gambit Evans : variante agressive de l'ouverture italienne",
+     "channel": "Marc Quenehen",
+     "duration": 1666,
+     "views": 97000,
+     "score": 5.25
+    },
+    {
+     "id": "VUz4towUvDE",
+     "title": "Gambit Evans : Test en Direct contre un 1500 Elo + Partie Folle de CARLSEN sur cette Ouverture !",
+     "channel": "Marc Quenehen",
+     "duration": 1305,
+     "views": 46000,
+     "score": 2.67
+    }
+   ]
+  },
+  {
+   "families": [
+    "Italian Game"
+   ],
+   "name": "Two Knights|Traxler|Fried Liver",
+   "videos": [
+    {
+     "id": "pamyS4zALl8",
+     "title": "Si vous jouez l'italienne, vous devez savoir contrer ces 3 gambits ! (Rousseau, Blackburne, Traxler)",
+     "channel": "Julien Song",
+     "duration": 739,
+     "views": 38000,
+     "score": 4.64
+    },
+    {
+     "id": "31CjU_Yb7BA",
+     "title": "La TRAXLER : une CONTRE-ATTAQUE à te faire transpirer",
+     "channel": "Marc Quenehen",
+     "duration": 917,
+     "views": 75000,
+     "score": 2.72
+    }
+   ]
+  },
+  {
+   "families": [
+    "Italian Game"
+   ],
+   "name": "Rousseau|Blackburne",
+   "videos": [
+    {
+     "id": "pamyS4zALl8",
+     "title": "Si vous jouez l'italienne, vous devez savoir contrer ces 3 gambits ! (Rousseau, Blackburne, Traxler)",
+     "channel": "Julien Song",
+     "duration": 739,
+     "views": 38000,
+     "score": 4.64
+    }
+   ]
+  },
+  {
+   "families": [
+    "Ruy Lopez"
+   ],
+   "videos": [
+    {
+     "id": "plrzXPAGPyo",
+     "title": "L'ouverture Espagnole - Partie pédagogique #1",
+     "channel": "Julien Song",
+     "duration": 1358,
+     "views": 253000,
+     "score": 5.35
+    },
+    {
+     "id": "7ah4E_gQf7I",
+     "title": "Ouverture espagnole (1) : Partie d'échecs pédagogique",
+     "channel": "Marc Quenehen",
+     "duration": 1371,
+     "views": 62000,
+     "score": 5.2
+    },
+    {
+     "id": "RnkCrG5GNGM",
+     "title": "Ouverture espagnole (4) : Partie d'échecs pédagogique",
+     "channel": "Marc Quenehen",
+     "duration": 1697,
+     "views": 45000,
+     "score": 5.16
+    },
+    {
+     "id": "LlYkAJiMt18",
+     "title": "Ouverture espagnole (5) : Partie d'échecs pédagogique",
+     "channel": "Marc Quenehen",
+     "duration": 1569,
+     "views": 43000,
+     "score": 5.16
+    },
+    {
+     "id": "Bt0WOcqdi38",
+     "title": "Mon Bazooka contre l'Espagnole",
+     "channel": "Julien Song",
+     "duration": 1327,
+     "views": 45000,
+     "score": 3.16
+    },
+    {
+     "id": "IWWURP-7wFo",
+     "title": "Pourquoi vous devriez arrêter de jouer l'Italienne et vous mettre à l'Espagnole",
+     "channel": "Julien Song",
+     "duration": 1141,
+     "views": 130000,
+     "score": 2.78
+    }
+   ]
+  },
+  {
+   "families": [
+    "Scotch Game"
+   ],
+   "videos": [
+    {
+     "id": "OJmPJuizFwM",
+     "title": "Ouverture écossaise (1) : Partie d'échecs pédagogique",
+     "channel": "Marc Quenehen",
+     "duration": 1255,
+     "views": 99000,
+     "score": 5.25
+    },
+    {
+     "id": "xjMYoxjqgms",
+     "title": "Gambit écossais (1) : Partie d'échecs pédagogique",
+     "channel": "Marc Quenehen",
+     "duration": 1205,
+     "views": 72000,
+     "score": 5.21
+    },
+    {
+     "id": "FQf9MlaTgpI",
+     "title": "Progressez dans la partie écossaise !",
+     "channel": "Marc Quenehen",
+     "duration": 1421,
+     "views": 50000,
+     "score": 5.17
+    },
+    {
+     "id": "CChdoefo4WM",
+     "title": "Mon plan secret contre l'écossaise",
+     "channel": "Julien Song",
+     "duration": 345,
+     "views": 24000,
+     "score": 2.1
+    }
+   ]
+  },
+  {
+   "families": [
+    "Four Knights Game",
+    "Three Knights Opening"
+   ],
+   "videos": [
+    {
+     "id": "JqxNcQf_kLg",
+     "title": "Le piège que les joueurs d'Italienne / 4 cavaliers se prennent toujours !",
+     "channel": "Julien Song",
+     "duration": 1158,
+     "views": 109000,
+     "score": 4.76
+    },
+    {
+     "id": "lIjnf7q3jQY",
+     "title": "Le Gambit Halloween : L’ARME ULTRA FORTE contre E4 E5 !!",
+     "channel": "Julien Song",
+     "duration": 391,
+     "views": 38000,
+     "score": 4.14
+    }
+   ]
+  },
+  {
+   "families": [
+    "Four Knights Game"
+   ],
+   "name": "Halloween",
+   "videos": [
+    {
+     "id": "lIjnf7q3jQY",
+     "title": "Le Gambit Halloween : L’ARME ULTRA FORTE contre E4 E5 !!",
+     "channel": "Julien Song",
+     "duration": 391,
+     "views": 38000,
+     "score": 4.14
+    }
+   ]
+  },
+  {
+   "families": [
+    "Vienna Game",
+    "Vienna Gambit, with Max Lange Defense"
+   ],
+   "videos": [
+    {
+     "id": "Uodtnmp2T1Q",
+     "title": "Ouverture viennoise (2) : Partie d'échecs pédagogique",
+     "channel": "Marc Quenehen",
+     "duration": 1884,
+     "views": 77000,
+     "score": 5.22
+    },
+    {
+     "id": "nN9IurVoGnI",
+     "title": "Ouverture viennoise (1) : Partie d'échecs pédagogique",
+     "channel": "Marc Quenehen",
+     "duration": 1715,
+     "views": 72000,
+     "score": 5.21
+    },
+    {
+     "id": "nOw5EqpyUyY",
+     "title": "Comment RIPOSTER à l’OUVERTURE VIENNOISE ! ⚔️♟️",
+     "channel": "Marc Quenehen",
+     "duration": 993,
+     "views": 32000,
+     "score": 4.63
+    },
+    {
+     "id": "hyq0fnpCl68",
+     "title": "La Viennoise a encore frappé !",
+     "channel": "Julien Song",
+     "duration": 1011,
+     "views": 28000,
+     "score": 2.61
+    }
+   ]
+  },
+  {
+   "families": [
+    "King's Gambit",
+    "King's Gambit Accepted",
+    "King's Gambit Declined"
+   ],
+   "videos": [
+    {
+     "id": "Y01dlAGkCSY",
+     "title": "Gambit Roi (3) : Partie d'échecs pédagogique",
+     "channel": "Marc Quenehen",
+     "duration": 1650,
+     "views": 50000,
+     "score": 5.17
+    },
+    {
+     "id": "5Aim3NeBSgM",
+     "title": "Gambit Roi (2) : Partie d'échecs pédagogique",
+     "channel": "Marc Quenehen",
+     "duration": 1350,
+     "views": 48000,
+     "score": 5.17
+    },
+    {
+     "id": "qOf1Zo2vWb4",
+     "title": "Gambit Roi (1) : Partie d'échecs pédagogique",
+     "channel": "Marc Quenehen",
+     "duration": 1148,
+     "views": 101000,
+     "score": 4.75
+    },
+    {
+     "id": "zkKliB-1fxI",
+     "title": "GAGNER en 8 COUPS aux échecs : Le GAMBIT ROI !!",
+     "channel": "Julien Song",
+     "duration": 585,
+     "views": 85000,
+     "score": 2.23
+    }
+   ]
+  },
+  {
+   "families": [
+    "Center Game",
+    "Center Game Accepted"
+   ],
+   "videos": [
+    {
+     "id": "PyGYFs-uWD4",
+     "title": "GAGNER en 10 COUPS aux échecs | La Partie du Centre",
+     "channel": "Julien Song",
+     "duration": 663,
+     "views": 53000,
+     "score": 2.68
+    }
+   ]
+  },
+  {
+   "families": [
+    "Danish Gambit",
+    "Danish Gambit Accepted",
+    "Danish Gambit Declined",
+    "Center Game"
+   ],
+   "videos": [
+    {
+     "id": "SiLVjN50M5k",
+     "title": "Gambit danois (1) : Partie d'échecs pédagogique",
+     "channel": "Marc Quenehen",
+     "duration": 1113,
+     "views": 57000,
+     "score": 4.69
+    },
+    {
+     "id": "-WvQ4COFZ7s",
+     "title": "LICHESS RÉVÈLE TOUT : Gambit ROI, DANOIS, ITALIENNE",
+     "channel": "Marc Quenehen",
+     "duration": 1407,
+     "views": 19000,
+     "score": 3.07
+    }
+   ]
+  },
+  {
+   "families": [
+    "Ponziani Opening"
+   ],
+   "videos": [
+    {
+     "id": "ClonAv98AkY",
+     "title": "L'Ouverture Ponziani : Efficace ou risquée ? Partie d'échecs pédagogique !!",
+     "channel": "Marc Quenehen",
+     "duration": 1924,
+     "views": 61000,
+     "score": 5.2
+    },
+    {
+     "id": "0von_F7Ms4Y",
+     "title": "GAGNER en 10 coups aux échecs | Début Ponziani",
+     "channel": "Julien Song",
+     "duration": 828,
+     "views": 99000,
+     "score": 2.75
+    }
+   ]
+  },
+  {
+   "families": [
+    "Petrov's Defense"
+   ],
+   "videos": [
+    {
+     "id": "u8xU3WWqs7c",
+     "title": "Défense russe (2) : Partie d'échecs pédagogique",
+     "channel": "Marc Quenehen",
+     "duration": 1877,
+     "views": 79000,
+     "score": 5.22
+    },
+    {
+     "id": "pkTM4oXN9_I",
+     "title": "Défense russe (1) : Partie d'échecs pédagogique",
+     "channel": "Marc Quenehen",
+     "duration": 1377,
+     "views": 69000,
+     "score": 5.21
+    }
+   ]
+  },
+  {
+   "families": [
+    "Philidor Defense"
+   ],
+   "videos": [
+    {
+     "id": "gTJkEVs-Rnc",
+     "title": "Défense Philidor (1) : Partie d'échecs pédagogique",
+     "channel": "Marc Quenehen",
+     "duration": 1404,
+     "views": 43000,
+     "score": 5.16
+    }
+   ]
+  },
+  {
+   "families": [
+    "Elephant Gambit"
+   ],
+   "videos": [
+    {
+     "id": "PddlHA-jVQE",
+     "title": "Le TERRIBLE piège de l’ÉLÉPHANT",
+     "channel": "Marc Quenehen",
+     "duration": 1563,
+     "views": 36000,
+     "score": 5.14
+    },
+    {
+     "id": "aK85EfvsnBY",
+     "title": "Piège d'ouverture (ép.3) : Piège de l'éléphant",
+     "channel": "Marc Quenehen",
+     "duration": 479,
+     "views": 38000,
+     "score": 4.14
+    }
+   ]
+  },
+  {
+   "families": [
+    "Sicilian Defense"
+   ],
+   "videos": [
+    {
+     "id": "qKLW76TMdzY",
+     "title": "Défense Sicilienne (10) : Partie d'échecs pédagogique",
+     "channel": "Marc Quenehen",
+     "duration": 1806,
+     "views": 57000,
+     "score": 5.19
+    },
+    {
+     "id": "wgwog2EIWMA",
+     "title": "Défense Sicilienne (3) : Partie d'échecs pédagogique",
+     "channel": "Marc Quenehen",
+     "duration": 1730,
+     "views": 50000,
+     "score": 5.17
+    },
+    {
+     "id": "2EldVts6jgg",
+     "title": "Défense Sicilienne (8) : Partie d'échecs pédagogique",
+     "channel": "Marc Quenehen",
+     "duration": 1722,
+     "views": 49000,
+     "score": 5.17
+    },
+    {
+     "id": "0fvzBIaI4vY",
+     "title": "La Sicilienne - Partie pédagogique #1 - Echecs",
+     "channel": "Julien Song",
+     "duration": 744,
+     "views": 175000,
+     "score": 4.81
+    },
+    {
+     "id": "6d3PfgqaZZw",
+     "title": "Mon arme secrète contre la Sicilienne",
+     "channel": "Julien Song",
+     "duration": 1176,
+     "views": 47000,
+     "score": 4.67
+    },
+    {
+     "id": "qEhJhKT4FcI",
+     "title": "Battre la Sicilienne avec l'Alapin",
+     "channel": "Julien Song",
+     "duration": 462,
+     "views": 13000,
+     "score": 4.03
+    }
+   ]
+  },
+  {
+   "families": [
+    "Sicilian Defense"
+   ],
+   "name": "Najdorf",
+   "videos": [
+    {
+     "id": "-OvQjGEhaF0",
+     "title": "Anand : Roques opposés dans la sicilienne Najdorf !",
+     "channel": "Marc Quenehen",
+     "duration": 1081,
+     "views": 27000,
+     "score": 2.61
+    },
+    {
+     "id": "j1Y5VlFRJ1I",
+     "title": "Case faible et jeu sur une couleur dans la Sicilienne Najdorf",
+     "channel": "Marc Quenehen",
+     "duration": 749,
+     "views": 6300,
+     "score": 2.45
+    }
+   ]
+  },
+  {
+   "families": [
+    "Sicilian Defense"
+   ],
+   "name": "Dragon",
+   "videos": [
+    {
+     "id": "5Mc9FD_awvg",
+     "title": "Les SECRETS de la DRAGON 🔥🤫",
+     "channel": "Marc Quenehen",
+     "duration": 1430,
+     "views": 39000,
+     "score": 5.15
+    },
+    {
+     "id": "SLXWi94FJo8",
+     "title": "Bobby Fischer : Le Massacre du Dragon !",
+     "channel": "Marc Quenehen",
+     "duration": 781,
+     "views": 35000,
+     "score": 2.64
+    },
+    {
+     "id": "q8ZjHoyWGpg",
+     "title": "Ouverture Dragon de Caruana qui brûle Nepo 🔥",
+     "channel": "Marc Quenehen",
+     "duration": 729,
+     "views": 17000,
+     "score": 2.56
+    }
+   ]
+  },
+  {
+   "families": [
+    "Sicilian Defense"
+   ],
+   "name": "Accelerated Dragon",
+   "videos": [
+    {
+     "id": "rdtz5xD11dA",
+     "title": "DRAGON accéléré : le cadeau de FIROUZJA !!",
+     "channel": "Marc Quenehen",
+     "duration": 586,
+     "views": 9000,
+     "score": 1.99
+    }
+   ]
+  },
+  {
+   "families": [
+    "Sicilian Defense"
+   ],
+   "name": "Sveshnikov|Lasker-Pelikan",
+   "videos": [
+    {
+     "id": "T3_4UXpon6E",
+     "title": "LA SVESHNIKOV : UNE ARME DYNAMIQUE ! (ép.2/4)",
+     "channel": "Marc Quenehen",
+     "duration": 1146,
+     "views": 19000,
+     "score": 4.57
+    },
+    {
+     "id": "_I5-mPFpkPA",
+     "title": "UNE DEFENSE DYNAMIQUE ? LA SVESHNIKOV ! (ép.1/4)",
+     "channel": "Marc Quenehen",
+     "duration": 1959,
+     "views": 42000,
+     "score": 3.16
+    },
+    {
+     "id": "3CC71hh_ozc",
+     "title": "Kasparov joue la Sveshnikov à Judit Polgar (dernier épisode)",
+     "channel": "Marc Quenehen",
+     "duration": 1438,
+     "views": 28000,
+     "score": 3.11
+    }
+   ]
+  },
+  {
+   "families": [
+    "Sicilian Defense"
+   ],
+   "name": "Alapin",
+   "videos": [
+    {
+     "id": "qEhJhKT4FcI",
+     "title": "Battre la Sicilienne avec l'Alapin",
+     "channel": "Julien Song",
+     "duration": 462,
+     "views": 13000,
+     "score": 4.03
+    }
+   ]
+  },
+  {
+   "families": [
+    "Sicilian Defense"
+   ],
+   "name": "Smith-Morra",
+   "videos": [
+    {
+     "id": "iAhAd87MXfM",
+     "title": "Gambit Morra vs 1700 Elo — Comment casser une ouverture dynamique",
+     "channel": "Marc Quenehen",
+     "duration": 1246,
+     "views": 26000,
+     "score": 4.6
+    }
+   ]
+  },
+  {
+   "families": [
+    "Sicilian Defense"
+   ],
+   "name": "Maroczy",
+   "videos": [
+    {
+     "id": "6ggZ87w_mIY",
+     "title": "Défense Sicilienne : L'étau de Maroczy et autres délices de structure de pions",
+     "channel": "Marc Quenehen",
+     "duration": 1257,
+     "views": 27000,
+     "score": 3.11
+    }
+   ]
+  },
+  {
+   "families": [
+    "French Defense"
+   ],
+   "videos": [
+    {
+     "id": "NX2o0zzQer0",
+     "title": "Défense française (9) : Partie d'échecs pédagogique",
+     "channel": "Marc Quenehen",
+     "duration": 1964,
+     "views": 96000,
+     "score": 5.25
+    },
+    {
+     "id": "DCLajTnuzLI",
+     "title": "Défense française (11) : Partie d'échecs pédagogique",
+     "channel": "Marc Quenehen",
+     "duration": 1570,
+     "views": 63000,
+     "score": 5.2
+    },
+    {
+     "id": "PGgxCDXaKMA",
+     "title": "Défense française (10) : Partie d'échecs pédagogique",
+     "channel": "Marc Quenehen",
+     "duration": 1454,
+     "views": 51000,
+     "score": 5.18
+    },
+    {
+     "id": "sIQjKy-Y4jg",
+     "title": "Un répertoire complet sur la FRANCAISE en 10min",
+     "channel": "Julien Song",
+     "duration": 640,
+     "views": 235000,
+     "score": 4.84
+    },
+    {
+     "id": "M2PskGJKMgc",
+     "title": "Défense française - Partie pédagogique #1 - Echecs",
+     "channel": "Julien Song",
+     "duration": 509,
+     "views": 97000,
+     "score": 4.25
+    },
+    {
+     "id": "Ql16lzbrFIQ",
+     "title": "Mon arme redoutable contre la Française",
+     "channel": "Julien Song",
+     "duration": 309,
+     "views": 13000,
+     "score": 4.03
+    }
+   ]
+  },
+  {
+   "families": [
+    "French Defense"
+   ],
+   "name": "Advance",
+   "videos": [
+    {
+     "id": "sfQCQZ9Birc",
+     "title": "La variante d'avance de la défense française",
+     "channel": "Marc Quenehen",
+     "duration": 1162,
+     "views": 46000,
+     "score": 4.67
+    }
+   ]
+  },
+  {
+   "families": [
+    "Caro-Kann Defense"
+   ],
+   "videos": [
+    {
+     "id": "pD4D1po5fe8",
+     "title": "La défense Caro-Kann - Partie pédagogique #1 - Echecs",
+     "channel": "Julien Song",
+     "duration": 1434,
+     "views": 128000,
+     "score": 5.28
+    },
+    {
+     "id": "pamRp4gzT3I",
+     "title": "Défense Caro Kann (1) : Partie d'échecs pédagogique",
+     "channel": "Marc Quenehen",
+     "duration": 1635,
+     "views": 127000,
+     "score": 5.28
+    },
+    {
+     "id": "Wob-GRPwBT0",
+     "title": "Défense Caro-Kann (6) : Partie d'échecs pédagogique",
+     "channel": "Marc Quenehen",
+     "duration": 1865,
+     "views": 100000,
+     "score": 5.25
+    },
+    {
+     "id": "Bom3PLqFMhA",
+     "title": "Défense Caro Kann (7) : Partie d'échecs pédagogique",
+     "channel": "Marc Quenehen",
+     "duration": 2279,
+     "views": 99000,
+     "score": 5.25
+    },
+    {
+     "id": "Nt5nyzekLYM",
+     "title": "Mon arme contre la Caro-Kann",
+     "channel": "Julien Song",
+     "duration": 874,
+     "views": 53000,
+     "score": 4.68
+    },
+    {
+     "id": "7PtWFgHMosA",
+     "title": "Battre la Caro-Kann avec la Fantasy Variation",
+     "channel": "Julien Song",
+     "duration": 403,
+     "views": 16000,
+     "score": 4.05
+    }
+   ]
+  },
+  {
+   "families": [
+    "Caro-Kann Defense"
+   ],
+   "name": "Fantasy|Maroczy",
+   "videos": [
+    {
+     "id": "7PtWFgHMosA",
+     "title": "Battre la Caro-Kann avec la Fantasy Variation",
+     "channel": "Julien Song",
+     "duration": 403,
+     "views": 16000,
+     "score": 4.05
+    },
+    {
+     "id": "lj7ward83J4",
+     "title": "La FANTASY de Julien Song CONTRÉE par le COUP de CARLSEN ! ♟️🔥",
+     "channel": "Marc Quenehen",
+     "duration": 865,
+     "views": 33000,
+     "score": 2.63
+    }
+   ]
+  },
+  {
+   "families": [
+    "Scandinavian Defense"
+   ],
+   "videos": [
+    {
+     "id": "yKKrd_X6fwA",
+     "title": "Défense scandinave (1) : Partie d'échecs pédagogique",
+     "channel": "Marc Quenehen",
+     "duration": 1538,
+     "views": 146000,
+     "score": 5.29
+    },
+    {
+     "id": "4-qM6UPjr0E",
+     "title": "Ma réfutation de la Scandinave",
+     "channel": "Julien Song",
+     "duration": 1489,
+     "views": 112000,
+     "score": 5.26
+    },
+    {
+     "id": "0gHzHQx445c",
+     "title": "Défense scandinave (2) : Partie d'échecs pédagogique",
+     "channel": "Marc Quenehen",
+     "duration": 1126,
+     "views": 48000,
+     "score": 4.67
+    },
+    {
+     "id": "l-eXCQz7Mgs",
+     "title": "Défense Scandinave - Partie pédagogique #1 - Echecs",
+     "channel": "Julien Song",
+     "duration": 902,
+     "views": 44000,
+     "score": 4.66
+    },
+    {
+     "id": "dVTBfzaqZ2U",
+     "title": "Défense scandinave (3) : Partie d'échecs pédagogique",
+     "channel": "Marc Quenehen",
+     "duration": 896,
+     "views": 32000,
+     "score": 4.63
+    },
+    {
+     "id": "1ZvMbgnAT6k",
+     "title": "Mon arme contre la Scandinave",
+     "channel": "Julien Song",
+     "duration": 360,
+     "views": 13000,
+     "score": 4.03
+    }
+   ]
+  },
+  {
+   "families": [
+    "Alekhine Defense"
+   ],
+   "videos": [
+    {
+     "id": "sNrlmrqBx9k",
+     "title": "Défense Alekhine (1) : Partie d'échecs pédagogique",
+     "channel": "Marc Quenehen",
+     "duration": 1389,
+     "views": 56000,
+     "score": 5.19
+    },
+    {
+     "id": "jOOQoW-GY4s",
+     "title": "Défense Alekhine (3) : Partie d'échecs pédagogique",
+     "channel": "Marc Quenehen",
+     "duration": 1626,
+     "views": 38000,
+     "score": 5.14
+    },
+    {
+     "id": "OwsrUiFuvwo",
+     "title": "Défense Alekhine (2) : Partie d'échecs pédagogique",
+     "channel": "Marc Quenehen",
+     "duration": 1386,
+     "views": 37000,
+     "score": 5.14
+    },
+    {
+     "id": "u-ve1_Uug_8",
+     "title": "Sanctionner l'Alekhine (1.e4 Cf6)",
+     "channel": "Julien Song",
+     "duration": 935,
+     "views": 23000,
+     "score": 2.59
+    }
+   ]
+  },
+  {
+   "families": [
+    "Pirc Defense"
+   ],
+   "videos": [
+    {
+     "id": "9x4pf4IuxiU",
+     "title": "Défense Pirc (1) : Partie d'échecs pédagogique",
+     "channel": "Marc Quenehen",
+     "duration": 1717,
+     "views": 74000,
+     "score": 5.22
+    },
+    {
+     "id": "kvvBno7SShg",
+     "title": "Défense Pirc (2) : Partie d'échecs pédagogique",
+     "channel": "Marc Quenehen",
+     "duration": 1176,
+     "views": 42000,
+     "score": 4.66
+    },
+    {
+     "id": "Zj_uFrfluIo",
+     "title": "Défense Pirc - Partie pédagogique",
+     "channel": "Julien Song",
+     "duration": 899,
+     "views": 26000,
+     "score": 4.6
+    },
+    {
+     "id": "7m_vLraronk",
+     "title": "La défense Pirc est-elle SOUS-COTÉE ?",
+     "channel": "Marc Quenehen",
+     "duration": 766,
+     "views": 18000,
+     "score": 2.56
+    }
+   ]
+  },
+  {
+   "families": [
+    "Nimzowitsch Defense"
+   ],
+   "videos": [
+    {
+     "id": "GOCBPbQRqtM",
+     "title": "Défense Nimzowitsch (1) : Partie d'échecs pédagogique",
+     "channel": "Marc Quenehen",
+     "duration": 1832,
+     "views": 35000,
+     "score": 5.14
+    }
+   ]
+  },
+  {
+   "families": [
+    "Owen Defense"
+   ],
+   "videos": [
+    {
+     "id": "ohvKGk1WSC0",
+     "title": "Défense Owen (1) : Partie d'échecs pédagogique",
+     "channel": "Marc Quenehen",
+     "duration": 442,
+     "views": 19000,
+     "score": 4.07
+    }
+   ]
+  },
+  {
+   "families": [
+    "Hippopotamus Defense",
+    "Modern Defense"
+   ],
+   "videos": [
+    {
+     "id": "aFottCLlIhM",
+     "title": "Défense Hippopotame ou Méthode Ruiz ?",
+     "channel": "Marc Quenehen",
+     "duration": 1208,
+     "views": 30000,
+     "score": 3.12
+    },
+    {
+     "id": "fU0Etwj-lk8",
+     "title": "Défense hippopotame / Ruiz : Domination positionnelle",
+     "channel": "Marc Quenehen",
+     "duration": 1032,
+     "views": 40000,
+     "score": 2.65
+    },
+    {
+     "id": "99Nr58kEEkc",
+     "title": "Défense hippopotame / Ruiz : Pour déstabiliser",
+     "channel": "Marc Quenehen",
+     "duration": 1020,
+     "views": 35000,
+     "score": 2.64
+    }
+   ]
+  },
+  {
+   "families": [
+    "Lion Defense",
+    "Philidor Defense"
+   ],
+   "videos": [
+    {
+     "id": "518LKE84Vj0",
+     "title": "Le Black Lion System !? Je découvre cette ouverture !",
+     "channel": "Marc Quenehen",
+     "duration": 1403,
+     "views": 40000,
+     "score": 3.15
+    }
+   ]
+  },
+  {
+   "families": [
+    "Queen's Gambit",
+    "Queen's Gambit Declined",
+    "Queen's Gambit Accepted",
+    "Tarrasch Defense",
+    "Slav Defense",
+    "Semi-Slav Defense"
+   ],
+   "videos": [
+    {
+     "id": "ev60CwzPPKU",
+     "title": "Gambit Dame (9) : Partie d'échecs pédagogique",
+     "channel": "Marc Quenehen",
+     "duration": 1998,
+     "views": 116000,
+     "score": 5.27
+    },
+    {
+     "id": "UuBfl0Z0wkE",
+     "title": "Gambit Dame (3) : Partie d'échecs pédagogique",
+     "channel": "Marc Quenehen",
+     "duration": 1275,
+     "views": 73000,
+     "score": 5.22
+    },
+    {
+     "id": "ePT0T0xoZC4",
+     "title": "Gambit Dame (11) : Partie d'échecs pédagogique",
+     "channel": "Marc Quenehen",
+     "duration": 1267,
+     "views": 64000,
+     "score": 5.2
+    },
+    {
+     "id": "JNNbQxpI3Y0",
+     "title": "Comment JOUER le GAMBIT DAME aux échecs",
+     "channel": "Julien Song",
+     "duration": 510,
+     "views": 436000,
+     "score": 4.41
+    },
+    {
+     "id": "l-Ct460-9xQ",
+     "title": "Je RÉVOLUTIONNE le Gambit Dame à la Ronde 7 de la Plagne !!",
+     "channel": "Julien Song",
+     "duration": 1034,
+     "views": 127000,
+     "score": 2.28
+    },
+    {
+     "id": "xjpTDc9stcM",
+     "title": "Punir le GAMBIT DAME avec le plus incroyable des CONTRE GAMBIT !!",
+     "channel": "Julien Song",
+     "duration": 596,
+     "views": 97000,
+     "score": 2.25
+    }
+   ]
+  },
+  {
+   "families": [
+    "Queen's Gambit Accepted"
+   ],
+   "videos": [
+    {
+     "id": "MWfBLH2ohIg",
+     "title": "Carlsen joue le Gambit Dame accepté !",
+     "channel": "Marc Quenehen",
+     "duration": 1101,
+     "views": 26000,
+     "score": 2.6
+    }
+   ]
+  },
+  {
+   "families": [
+    "Queen's Gambit Declined"
+   ],
+   "name": "Albin",
+   "videos": [
+    {
+     "id": "ffTsjRcHKb8",
+     "title": "Contre gambit Albin (1) : Partie d'échecs pédagogique",
+     "channel": "Marc Quenehen",
+     "duration": 1486,
+     "views": 74000,
+     "score": 5.22
+    },
+    {
+     "id": "zYqZKqiIWOQ",
+     "title": "Contre gambit Albin (2) : Partie d'échecs pédagogique",
+     "channel": "Marc Quenehen",
+     "duration": 1349,
+     "views": 32000,
+     "score": 5.13
+    },
+    {
+     "id": "XmxCyyYLzMQ",
+     "title": "Piège d'ouverture (ép.4) : Contre gambit Albin",
+     "channel": "Marc Quenehen",
+     "duration": 510,
+     "views": 31000,
+     "score": 4.12
+    }
+   ]
+  },
+  {
+   "families": [
+    "London System",
+    "London System, with Be2",
+    "London System, with Bd3"
+   ],
+   "videos": [
+    {
+     "id": "HJ7CQLEAxcc",
+     "title": "Système de Londres (1) : Partie d'échecs pédagogique",
+     "channel": "Marc Quenehen",
+     "duration": 1645,
+     "views": 199000,
+     "score": 5.32
+    },
+    {
+     "id": "0rG__61Pcd4",
+     "title": "Système de Londres (2) : Partie d'échecs pédagogique",
+     "channel": "Marc Quenehen",
+     "duration": 1710,
+     "views": 86000,
+     "score": 5.23
+    },
+    {
+     "id": "8hVZvr0TUik",
+     "title": "Système de Londres : Je ne parviens pas à trouver le plan jusqu'à ce que…",
+     "channel": "Marc Quenehen",
+     "duration": 2207,
+     "views": 69000,
+     "score": 5.21
+    },
+    {
+     "id": "KBEPZtS8Nfo",
+     "title": "La meilleure façon de contrer le système de Londres (Répertoire complet en 15min)",
+     "channel": "Julien Song",
+     "duration": 888,
+     "views": 130000,
+     "score": 4.78
+    },
+    {
+     "id": "H-lPPeU1xWc",
+     "title": "Les 7 meilleurs pièges dans le Système de Londres",
+     "channel": "Julien Song",
+     "duration": 805,
+     "views": 76000,
+     "score": 4.72
+    },
+    {
+     "id": "WV8lKhKozvw",
+     "title": "Jouer CONTRE le système de LONDRES",
+     "channel": "Julien Song",
+     "duration": 814,
+     "views": 39000,
+     "score": 4.65
+    }
+   ]
+  },
+  {
+   "families": [
+    "Queen's Pawn Game",
+    "Indian Defense"
+   ],
+   "name": "London",
+   "videos": [
+    {
+     "id": "HJ7CQLEAxcc",
+     "title": "Système de Londres (1) : Partie d'échecs pédagogique",
+     "channel": "Marc Quenehen",
+     "duration": 1645,
+     "views": 199000,
+     "score": 5.32
+    },
+    {
+     "id": "0rG__61Pcd4",
+     "title": "Système de Londres (2) : Partie d'échecs pédagogique",
+     "channel": "Marc Quenehen",
+     "duration": 1710,
+     "views": 86000,
+     "score": 5.23
+    },
+    {
+     "id": "8hVZvr0TUik",
+     "title": "Système de Londres : Je ne parviens pas à trouver le plan jusqu'à ce que…",
+     "channel": "Marc Quenehen",
+     "duration": 2207,
+     "views": 69000,
+     "score": 5.21
+    },
+    {
+     "id": "KBEPZtS8Nfo",
+     "title": "La meilleure façon de contrer le système de Londres (Répertoire complet en 15min)",
+     "channel": "Julien Song",
+     "duration": 888,
+     "views": 130000,
+     "score": 4.78
+    },
+    {
+     "id": "H-lPPeU1xWc",
+     "title": "Les 7 meilleurs pièges dans le Système de Londres",
+     "channel": "Julien Song",
+     "duration": 805,
+     "views": 76000,
+     "score": 4.72
+    },
+    {
+     "id": "WV8lKhKozvw",
+     "title": "Jouer CONTRE le système de LONDRES",
+     "channel": "Julien Song",
+     "duration": 814,
+     "views": 39000,
+     "score": 4.65
+    }
+   ]
+  },
+  {
+   "families": [
+    "Rapport-Jobava System",
+    "Rapport-Jobava System, with e6"
+   ],
+   "videos": [
+    {
+     "id": "8nrSkryRIBw",
+     "title": "La BÊTE du JOBAVA-LONDRES s’acharne sur moi… et elle veut me MATER ! 🐙♟️😱",
+     "channel": "Marc Quenehen",
+     "duration": 1582,
+     "views": 28000,
+     "score": 3.11
+    }
+   ]
+  },
+  {
+   "families": [
+    "Queen's Pawn Game"
+   ],
+   "name": "Jobava|Rapport",
+   "videos": [
+    {
+     "id": "8nrSkryRIBw",
+     "title": "La BÊTE du JOBAVA-LONDRES s’acharne sur moi… et elle veut me MATER ! 🐙♟️😱",
+     "channel": "Marc Quenehen",
+     "duration": 1582,
+     "views": 28000,
+     "score": 3.11
+    }
+   ]
+  },
+  {
+   "families": [
+    "Colle System"
+   ],
+   "videos": [
+    {
+     "id": "5cpCpdo1h00",
+     "title": "Système Colle (3) : Partie d'échecs pédagogique",
+     "channel": "Marc Quenehen",
+     "duration": 2123,
+     "views": 62000,
+     "score": 5.2
+    },
+    {
+     "id": "4RjpBvxAIY8",
+     "title": "Système Colle (2) : Partie d'échecs pédagogique",
+     "channel": "Marc Quenehen",
+     "duration": 1801,
+     "views": 47000,
+     "score": 5.17
+    },
+    {
+     "id": "_486h0fnAqI",
+     "title": "Système Colle (4) : Partie d'échecs pédagogique",
+     "channel": "Marc Quenehen",
+     "duration": 1535,
+     "views": 36000,
+     "score": 5.14
+    },
+    {
+     "id": "B6sXlJ6cTCM",
+     "title": "Système Colle - Partie pédagogique",
+     "channel": "Julien Song",
+     "duration": 670,
+     "views": 22000,
+     "score": 4.59
+    }
+   ]
+  },
+  {
+   "families": [
+    "Queen's Pawn Game"
+   ],
+   "name": "Colle|Zukertort",
+   "videos": [
+    {
+     "id": "5cpCpdo1h00",
+     "title": "Système Colle (3) : Partie d'échecs pédagogique",
+     "channel": "Marc Quenehen",
+     "duration": 2123,
+     "views": 62000,
+     "score": 5.2
+    },
+    {
+     "id": "4RjpBvxAIY8",
+     "title": "Système Colle (2) : Partie d'échecs pédagogique",
+     "channel": "Marc Quenehen",
+     "duration": 1801,
+     "views": 47000,
+     "score": 5.17
+    },
+    {
+     "id": "_486h0fnAqI",
+     "title": "Système Colle (4) : Partie d'échecs pédagogique",
+     "channel": "Marc Quenehen",
+     "duration": 1535,
+     "views": 36000,
+     "score": 5.14
+    },
+    {
+     "id": "B6sXlJ6cTCM",
+     "title": "Système Colle - Partie pédagogique",
+     "channel": "Julien Song",
+     "duration": 670,
+     "views": 22000,
+     "score": 4.59
+    }
+   ]
+  },
+  {
+   "families": [
+    "Blackmar-Diemer Gambit",
+    "Blackmar-Diemer Gambit Accepted",
+    "Blackmar-Diemer Gambit Declined"
+   ],
+   "videos": [
+    {
+     "id": "Iq1JWi9lTzQ",
+     "title": "Faites PEUR avec le GAMBIT BLACKMAR DIEMER !! 😱😱",
+     "channel": "Marc Quenehen",
+     "duration": 1847,
+     "views": 60000,
+     "score": 3.19
+    }
+   ]
+  },
+  {
+   "families": [
+    "Englund Gambit",
+    "Englund Gambit Declined"
+   ],
+   "videos": [
+    {
+     "id": "67M7SWYxeac",
+     "title": "GAGNER en 8 COUPS aux échecs | Le Gambit ENGLUND",
+     "channel": "Julien Song",
+     "duration": 895,
+     "views": 113000,
+     "score": 2.76
+    }
+   ]
+  },
+  {
+   "families": [
+    "Budapest Defense"
+   ],
+   "videos": [
+    {
+     "id": "cOVvmGMjvN0",
+     "title": "Ce 2050 Elo me TROLL avec le GAMBIT BUDAPEST !! (Ronde 5 - Cassis)",
+     "channel": "Julien Song",
+     "duration": 943,
+     "views": 105000,
+     "score": 2.26
+    }
+   ]
+  },
+  {
+   "families": [
+    "Nimzo-Indian Defense"
+   ],
+   "videos": [
+    {
+     "id": "lMyYJ_g-pdI",
+     "title": "Défense Nimzo indienne (2) : Partie d'échecs pédagogique",
+     "channel": "Marc Quenehen",
+     "duration": 1798,
+     "views": 55000,
+     "score": 5.19
+    },
+    {
+     "id": "HLDMKFWugmg",
+     "title": "Défense Nimzo indienne (1) : Partie d'échecs pédagogique",
+     "channel": "Marc Quenehen",
+     "duration": 1402,
+     "views": 39000,
+     "score": 5.15
+    },
+    {
+     "id": "Kt2fSnxF4J8",
+     "title": "Comment gagner avec la Nimzo Indienne aux échecs ? (Ronde 2 - Cassis)",
+     "channel": "Julien Song",
+     "duration": 579,
+     "views": 40000,
+     "score": 3.65
+    }
+   ]
+  },
+  {
+   "families": [
+    "King's Indian Defense"
+   ],
+   "videos": [
+    {
+     "id": "cvqGnIEmOyM",
+     "title": "Défense est indienne (3) : Partie d'échecs pédagogique",
+     "channel": "Marc Quenehen",
+     "duration": 1765,
+     "views": 56000,
+     "score": 5.19
+    },
+    {
+     "id": "JmcrAB-bjt0",
+     "title": "DÉFENSE EST-INDIENNE pour me PIÉGER !",
+     "channel": "Marc Quenehen",
+     "duration": 1598,
+     "views": 25000,
+     "score": 5.1
+    },
+    {
+     "id": "P6EOo9Pje10",
+     "title": "L'Est Indienne - Partie pédagogique #1 - Echecs",
+     "channel": "Julien Song",
+     "duration": 784,
+     "views": 75000,
+     "score": 4.72
+    },
+    {
+     "id": "BFNedzi9znQ",
+     "title": "Défense est indienne (1) : Partie d'échecs pédagogique",
+     "channel": "Marc Quenehen",
+     "duration": 923,
+     "views": 74000,
+     "score": 4.72
+    },
+    {
+     "id": "HaJVtLrRebg",
+     "title": "Un plan méconnu dans l'Est Indienne",
+     "channel": "Julien Song",
+     "duration": 324,
+     "views": 23000,
+     "score": 2.09
+    }
+   ]
+  },
+  {
+   "families": [
+    "Bogo-Indian Defense"
+   ],
+   "videos": [
+    {
+     "id": "Kbbn6uNcRiA",
+     "title": "Défense Bogo indienne (1) : Partie d'échecs pédagogique",
+     "channel": "Marc Quenehen",
+     "duration": 1552,
+     "views": 44000,
+     "score": 5.16
+    }
+   ]
+  },
+  {
+   "families": [
+    "Grünfeld Defense",
+    "Neo-Grünfeld Defense"
+   ],
+   "videos": [
+    {
+     "id": "QRX8n4cdrz4",
+     "title": "Défense Grünfeld (3) : Partie d'échecs pédagogique",
+     "channel": "Marc Quenehen",
+     "duration": 2454,
+     "views": 55000,
+     "score": 5.19
+    },
+    {
+     "id": "-ylkN1oC5do",
+     "title": "Défense Grünfeld (2) : Partie d'échecs pédagogique",
+     "channel": "Marc Quenehen",
+     "duration": 1321,
+     "views": 38000,
+     "score": 5.14
+    },
+    {
+     "id": "sWhT4ayJvrs",
+     "title": "Défense Grünfeld (1) : Partie d'échecs pédagogique",
+     "channel": "Marc Quenehen",
+     "duration": 1014,
+     "views": 37000,
+     "score": 4.64
+    }
+   ]
+  },
+  {
+   "families": [
+    "Benoni Defense"
+   ],
+   "videos": [
+    {
+     "id": "L9vF7ODcgUU",
+     "title": "Le système Benoni pour GAGNER facile contre 1.d4",
+     "channel": "Julien Song",
+     "duration": 617,
+     "views": 53000,
+     "score": 4.68
+    },
+    {
+     "id": "wR05qAQAUrU",
+     "title": "Défense Benoni (1) : Partie d'échecs pédagogique",
+     "channel": "Marc Quenehen",
+     "duration": 1142,
+     "views": 47000,
+     "score": 4.67
+    },
+    {
+     "id": "Wl8ZuigkhR4",
+     "title": "Majorité de pions dans la défense Benoni",
+     "channel": "Marc Quenehen",
+     "duration": 892,
+     "views": 9200,
+     "score": 2.49
+    }
+   ]
+  },
+  {
+   "families": [
+    "Benko Gambit",
+    "Benko Gambit Accepted",
+    "Benko Gambit Declined"
+   ],
+   "videos": [
+    {
+     "id": "ZG1qeATatMw",
+     "title": "Gambit Benko (1) : Partie d'échecs pédagogique",
+     "channel": "Marc Quenehen",
+     "duration": 1660,
+     "views": 40000,
+     "score": 5.15
+    },
+    {
+     "id": "tghlHjXTkCU",
+     "title": "Gambit Benko (2) : Partie d'échecs pédagogique",
+     "channel": "Marc Quenehen",
+     "duration": 1439,
+     "views": 29000,
+     "score": 5.12
+    }
+   ]
+  },
+  {
+   "families": [
+    "Catalan Opening"
+   ],
+   "videos": [
+    {
+     "id": "OfyKlTE4Uu0",
+     "title": "Progressez dans la partie catalane !",
+     "channel": "Marc Quenehen",
+     "duration": 1479,
+     "views": 41000,
+     "score": 5.15
+    },
+    {
+     "id": "A8X36CtbFdw",
+     "title": "Je piège ce 2000 Elo Indien dans la Catalane à la ronde 4 de Dubai !!",
+     "channel": "Julien Song",
+     "duration": 1858,
+     "views": 68000,
+     "score": 4.71
+    },
+    {
+     "id": "Vng2j-t35Ns",
+     "title": "Ouverture Catalane (1) : Partie d'échecs pédagogique",
+     "channel": "Marc Quenehen",
+     "duration": 1175,
+     "views": 36000,
+     "score": 4.64
+    },
+    {
+     "id": "4oEScnx4VP4",
+     "title": "Ce 2100 Elo Indien me piège dans ma Catalane à la ronde 6 de Dubai !!",
+     "channel": "Julien Song",
+     "duration": 1844,
+     "views": 32000,
+     "score": 4.63
+    },
+    {
+     "id": "l_6CB7mQV-Y",
+     "title": "Comment gagner avec la Catalane aux échecs (Ronde 1 - Cassis)",
+     "channel": "Julien Song",
+     "duration": 801,
+     "views": 74000,
+     "score": 4.22
+    },
+    {
+     "id": "ueWfPiQ1YcI",
+     "title": "Masterclass de Carlsen dans la Catalane",
+     "channel": "Marc Quenehen",
+     "duration": 1267,
+     "views": 27000,
+     "score": 3.11
+    }
+   ]
+  },
+  {
+   "families": [
+    "Dutch Defense"
+   ],
+   "videos": [
+    {
+     "id": "8BHpNGSeYok",
+     "title": "La défense Hollandaise - Partie Pédagogique #1 - Echecs",
+     "channel": "Julien Song",
+     "duration": 1339,
+     "views": 50000,
+     "score": 5.17
+    },
+    {
+     "id": "cB2qK299FNQ",
+     "title": "Défense hollandaise (1) : Partie d'échecs pédagogique",
+     "channel": "Marc Quenehen",
+     "duration": 1202,
+     "views": 44000,
+     "score": 5.16
+    },
+    {
+     "id": "w9dvOy4VbqM",
+     "title": "Défense hollandaise stonewall de Jean Hébert !",
+     "channel": "Marc Quenehen",
+     "duration": 956,
+     "views": 22000,
+     "score": 2.59
+    },
+    {
+     "id": "By6CcEjTcRw",
+     "title": "Carlsen joue la Stonewall !",
+     "channel": "Marc Quenehen",
+     "duration": 936,
+     "views": 19000,
+     "score": 2.57
+    }
+   ]
+  },
+  {
+   "families": [
+    "Dutch Defense"
+   ],
+   "name": "Stonewall",
+   "videos": [
+    {
+     "id": "w9dvOy4VbqM",
+     "title": "Défense hollandaise stonewall de Jean Hébert !",
+     "channel": "Marc Quenehen",
+     "duration": 956,
+     "views": 22000,
+     "score": 2.59
+    },
+    {
+     "id": "By6CcEjTcRw",
+     "title": "Carlsen joue la Stonewall !",
+     "channel": "Marc Quenehen",
+     "duration": 936,
+     "views": 19000,
+     "score": 2.57
+    }
+   ]
+  },
+  {
+   "families": [
+    "Indian Defense"
+   ],
+   "videos": [
+    {
+     "id": "UXOacR-3Z3Y",
+     "title": "Défense Indienne… Restez QueneZen !",
+     "channel": "Marc Quenehen",
+     "duration": 911,
+     "views": 27000,
+     "score": 2.61
+    }
+   ]
+  },
+  {
+   "families": [
+    "English Opening"
+   ],
+   "videos": [
+    {
+     "id": "gtLWamxSjzI",
+     "title": "Ouverture anglaise (2) : Partie d'échecs pédagogique",
+     "channel": "Marc Quenehen",
+     "duration": 1770,
+     "views": 69000,
+     "score": 5.21
+    },
+    {
+     "id": "Vq1jQ7T5yNQ",
+     "title": "Ouverture anglaise (3) : Partie d'échecs pédagogique",
+     "channel": "Marc Quenehen",
+     "duration": 1620,
+     "views": 38000,
+     "score": 5.14
+    },
+    {
+     "id": "s3-VJark2sk",
+     "title": "J’ai TENTÉ un PIÈGE contre l’ANGLAISE… mais c’est RATÉ ! 😂",
+     "channel": "Marc Quenehen",
+     "duration": 1316,
+     "views": 29000,
+     "score": 5.12
+    }
+   ]
+  },
+  {
+   "families": [
+    "Réti Opening",
+    "Zukertort Opening"
+   ],
+   "videos": [
+    {
+     "id": "vMUqDSybZOQ",
+     "title": "Début Réti (3) : Partie d'échecs pédagogique",
+     "channel": "Marc Quenehen",
+     "duration": 2106,
+     "views": 54000,
+     "score": 5.18
+    },
+    {
+     "id": "0gnguAX4y3M",
+     "title": "Début Réti (1) : Partie d'échecs pédagogique",
+     "channel": "Marc Quenehen",
+     "duration": 1337,
+     "views": 50000,
+     "score": 5.17
+    },
+    {
+     "id": "6Y_kzIyJkm8",
+     "title": "Début Réti (4) : Partie d'échecs pédagogique",
+     "channel": "Marc Quenehen",
+     "duration": 2223,
+     "views": 48000,
+     "score": 5.17
+    }
+   ]
+  },
+  {
+   "families": [
+    "Bird Opening"
+   ],
+   "videos": [
+    {
+     "id": "CCEUSDoc6C0",
+     "title": "Le système BIRD pour gagner FACILE avec les Blancs",
+     "channel": "Julien Song",
+     "duration": 679,
+     "views": 119000,
+     "score": 4.77
+    },
+    {
+     "id": "U6ald3-CD_E",
+     "title": "Ouverture Bird (1) : Partie d'échecs pédagogique",
+     "channel": "Marc Quenehen",
+     "duration": 1146,
+     "views": 39000,
+     "score": 4.65
+    },
+    {
+     "id": "M8uv3fD_7u4",
+     "title": "Ouverture Bird (3) : Partie d'échecs pédagogique",
+     "channel": "Marc Quenehen",
+     "duration": 960,
+     "views": 30000,
+     "score": 4.62
+    },
+    {
+     "id": "_hVQ7mXRoJU",
+     "title": "Ouverture Bird (2) : Partie d'échecs pédagogique",
+     "channel": "Marc Quenehen",
+     "duration": 1049,
+     "views": 27000,
+     "score": 4.61
+    }
+   ]
+  },
+  {
+   "families": [
+    "Nimzo-Larsen Attack"
+   ],
+   "videos": [
+    {
+     "id": "zRI_nULrkJI",
+     "title": "Début Larsen (1) : Partie d'échecs pédagogique",
+     "channel": "Marc Quenehen",
+     "duration": 833,
+     "views": 32000,
+     "score": 4.63
+    },
+    {
+     "id": "yMqHPwewlrk",
+     "title": "GAGNER en 8 coups aux échecs | Début Larsen",
+     "channel": "Julien Song",
+     "duration": 900,
+     "views": 52000,
+     "score": 2.68
+    },
+    {
+     "id": "4ykVLyhCtp4",
+     "title": "Le Maître de la Stratégie Hypermoderne aux Échecs avec l'Ouverture Larsen !",
+     "channel": "Marc Quenehen",
+     "duration": 639,
+     "views": 23000,
+     "score": 2.59
+    }
+   ]
+  },
+  {
+   "families": [
+    "Polish Opening",
+    "Polish Opening, with d5",
+    "English Orangutan"
+   ],
+   "videos": [
+    {
+     "id": "A66fH5Gi7iA",
+     "title": "Ouverture orang-outan (1) : Partie d'échecs pédagogique",
+     "channel": "Marc Quenehen",
+     "duration": 1195,
+     "views": 46000,
+     "score": 4.67
+    },
+    {
+     "id": "OwA4UWeE9xg",
+     "title": "3 parties d'échecs sur l'ouverture Orang-Outan ! 🦧",
+     "channel": "Marc Quenehen",
+     "duration": 2095,
+     "views": 59000,
+     "score": 3.19
+    },
+    {
+     "id": "OwUDgukvJqw",
+     "title": "Orang outan (ép.1/4) 🦧 Ouvertures d'échecs en duo",
+     "channel": "Marc Quenehen",
+     "duration": 2327,
+     "views": 34000,
+     "score": 3.13
+    }
+   ]
+  },
+  {
+   "families": [
+    "Grob Opening"
+   ],
+   "videos": [
+    {
+     "id": "zFVCaKNeWe8",
+     "title": "Début Grob (1) : Partie d'échecs pédagogique",
+     "channel": "Marc Quenehen",
+     "duration": 1215,
+     "views": 46000,
+     "score": 5.17
+    },
+    {
+     "id": "XM5CbS7SMSQ",
+     "title": "Nakamura JOUE la PIRE ouverture : G4 au 1ER coup contre KRAMNIK !!",
+     "channel": "Julien Song",
+     "duration": 498,
+     "views": 29000,
+     "score": 2.12
+    }
+   ]
+  },
+  {
+   "families": [
+    "Van't Kruijs Opening"
+   ],
+   "videos": [
+    {
+     "id": "iGZsBEXtmcs",
+     "title": "Début Van 't Kruijs (1) : Partie d'échecs pédagogique",
+     "channel": "Marc Quenehen",
+     "duration": 1130,
+     "views": 43000,
+     "score": 4.66
+    }
+   ]
+  },
+  {
+   "families": [
+    "Sodium Attack"
+   ],
+   "videos": [
+    {
+     "id": "ahHM887lTdY",
+     "title": "Magnus Carlsen INNOVE dans l'ouverture avec la rare ATTAQUE DURKIN !",
+     "channel": "Marc Quenehen",
+     "duration": 599,
+     "views": 17000,
+     "score": 2.06
+    }
+   ]
+  }
+ ]
+}

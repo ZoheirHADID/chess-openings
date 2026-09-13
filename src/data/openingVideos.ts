@@ -1,10 +1,13 @@
+import creatorVideos from './creatorVideos.json'
+
 /**
  * Ressources video francophones par famille d'ouvertures.
  *
- * FAMILY_FR sert a construire une recherche YouTube pertinente pour n'importe
- * quelle ouverture ; FAMILY_VIDEOS pointe vers une video reperee pour les
- * familles les plus courantes. Les liens directs peuvent vieillir : le lien de
- * recherche reste le repli universel.
+ * Priorite aux videos de Julien Song et Marc Quenehen quand ils ont traite
+ * l'ouverture (CREATOR_VIDEOS, genere par scripts/build-videos.mjs a partir
+ * des listes de leurs chaines), puis FAMILY_VIDEOS (videos reperees a la main),
+ * enfin une recherche YouTube construite avec FAMILY_FR. Les liens directs
+ * peuvent vieillir : le lien de recherche reste le repli universel.
  */
 
 export const FAMILY_FR: Record<string, string> = {
@@ -25,6 +28,21 @@ export const FAMILY_FR: Record<string, string> = {
   'Ponziani Opening': 'ouverture Ponziani',
   'Petrov Defense': 'défense russe Petrov',
   "Petrov's Defense": 'défense russe Petrov',
+  'Indian Defense': 'défense indienne',
+  'Grünfeld Defense': 'défense Grünfeld',
+  'Neo-Grünfeld Defense': 'défense néo-Grünfeld',
+  'Réti Opening': 'ouverture Réti',
+  "King's Indian Attack": 'attaque est-indienne',
+  'Tarrasch Defense': 'défense Tarrasch',
+  'Rapport-Jobava System': 'système Jobava Londres',
+  'Blackmar-Diemer Gambit': 'gambit Blackmar-Diemer',
+  'Englund Gambit': 'gambit Englund',
+  'Latvian Gambit': 'gambit letton',
+  'Elephant Gambit': 'gambit éléphant',
+  'Hippopotamus Defense': 'défense hippopotame',
+  'Pterodactyl Defense': 'défense ptérodactyle',
+  'Van Geet Opening': 'ouverture Van Geet',
+  'Richter-Veresov Attack': 'attaque Veresov',
   'Russian Game': 'défense russe Petrov',
   'Philidor Defense': 'défense Philidor',
   'Sicilian Defense': 'défense sicilienne',
@@ -126,11 +144,66 @@ export interface VideoLink {
   label: string
   /** Vrai si le lien pointe vers une video precise, faux si c'est une recherche. */
   direct: boolean
+  /** Chaine YouTube quand la video vient d'un createur suivi. */
+  channel?: string
 }
 
-/** Lien video pour une ouverture : video reperee, sinon recherche YouTube en francais. */
+export interface CreatorVideo {
+  id: string
+  title: string
+  channel: string
+  /** Duree en secondes. */
+  duration: number
+  views: number
+  score: number
+  url: string
+  /** Vrai si la video vise precisement la variante (et pas seulement la famille). */
+  specific: boolean
+}
+
+interface CreatorEntry {
+  families: string[]
+  name?: string
+  videos: { id: string; title: string; channel: string; duration: number; views: number; score: number }[]
+}
+
+const CREATOR_ENTRIES = (creatorVideos as { entries: CreatorEntry[] }).entries
+export const CREATOR_CHANNELS = (creatorVideos as { channels: { name: string; handle: string }[] }).channels
+
+/**
+ * Videos de Julien Song et Marc Quenehen pour une ouverture : celles qui
+ * visent la variante exacte d'abord, puis celles de la famille, sans doublon,
+ * classees par pertinence (cours avant parties commentees, puis audience).
+ */
+export function videosFor(family: string | undefined, name: string | undefined, limit = 6): CreatorVideo[] {
+  if (!family) return []
+  const seen = new Set<string>()
+  const out: CreatorVideo[] = []
+  const applicable = CREATOR_ENTRIES.filter(
+    (entry) => entry.families.includes(family) && (entry.name === undefined || (!!name && new RegExp(entry.name).test(name))),
+  )
+  // Les regles ciblant la variante passent d'abord : leurs videos gardent le badge « variante »
+  applicable.sort((a, b) => Number(b.name !== undefined) - Number(a.name !== undefined))
+  for (const entry of applicable) {
+    const specific = entry.name !== undefined
+    for (const video of entry.videos) {
+      if (seen.has(video.id)) continue
+      seen.add(video.id)
+      out.push({ ...video, url: `https://www.youtube.com/watch?v=${video.id}`, specific })
+    }
+  }
+  return out.sort((a, b) => Number(b.specific) - Number(a.specific) || b.score - a.score).slice(0, limit)
+}
+
+/**
+ * Lien video pour une ouverture : video de Julien Song ou Marc Quenehen si l'un
+ * d'eux a traite le sujet, sinon video reperee, sinon recherche YouTube en francais.
+ */
 export function videoLinkFor(family: string | undefined, name: string | undefined): VideoLink | null {
   if (!family && !name) return null
+
+  const [creator] = videosFor(family, name, 1)
+  if (creator) return { url: creator.url, label: creator.title, direct: true, channel: creator.channel }
 
   const known = family ? FAMILY_VIDEOS[family] : undefined
   if (known) return { url: known.url, label: known.title, direct: true }

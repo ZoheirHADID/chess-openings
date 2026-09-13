@@ -84,11 +84,16 @@ les résultats réels, et analyse **Stockfish** dès que la partie sort de la th
 - Les deux sont clairement distingués : « Théorie » pour le texte rédigé, « Analyse de la position » pour
   ce qui est déduit automatiquement, afin de ne jamais faire passer une heuristique pour de la théorie.
 - Lien direct vers la page **Wikibooks** correspondant exactement à la ligne affichée.
-- **Vidéo francophone** : le nom de l'ouverture sous l'échiquier est cliquable. Il ouvre une vidéo
-  YouTube en français repérée pour cette famille (italienne, espagnole, sicilienne, française,
-  Caro-Kann, écossaise, Philidor, système de Londres) ou, à défaut, une recherche YouTube construite
-  avec le nom français de l'ouverture. Le marqueur ▶ est rouge pour une vidéo précise, gris pour une
-  recherche. Table dans `src/data/openingVideos.ts`.
+- **Vidéo francophone** : le nom de l'ouverture sous l'échiquier est cliquable. Il ouvre **en priorité
+  une vidéo de Julien Song ou de Marc Quenehen** quand l'un d'eux a traité l'ouverture (variante exacte
+  d'abord, sinon la famille), à défaut une vidéo repérée à la main, sinon une recherche YouTube avec le
+  nom français de l'ouverture. Le marqueur ▶ est rouge pour une vidéo précise, gris pour une recherche ;
+  l'infobulle indique la chaîne. L'onglet Analyse liste jusqu'à six vidéos des deux chaînes (cours avant
+  parties commentées, durée, badge « variante »).
+  L'association est générée par `scripts/build-videos.mjs` à partir des listes de vidéos des deux
+  chaînes (`data/raw/videos-*.txt`, obtenues avec yt-dlp) et de règles par famille et variante ; sortie
+  dans `src/data/creatorVideos.json` (72 familles couvertes, 160 vidéos). Table de repli dans
+  `src/data/openingVideos.ts`.
 
 ### Moteur Stockfish et barre d'évaluation
 - **Barre d'évaluation** verticale collée à l'échiquier : avantage blanc / noir en temps réel, mat annoncé.

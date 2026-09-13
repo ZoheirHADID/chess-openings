@@ -9,6 +9,44 @@ import type { TheoryGap } from '../lib/deviations'
 import type { PracticalNote } from '../lib/practical'
 import type { Docs } from '../lib/docs'
 import { DOCS_SYSTEM_PROMPT, MOVE_SYSTEM_PROMPT, buildDocsPrompt } from '../lib/aiExplain'
+import type { CreatorVideo } from '../data/openingVideos'
+
+const formatDuration = (seconds: number) => {
+  const m = Math.round(seconds / 60)
+  return m >= 60 ? `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')}` : `${m} min`
+}
+
+/** Videos de Julien Song et Marc Quenehen sur l'ouverture (variante exacte d'abord). */
+function VideosBlock({ videos }: { videos: CreatorVideo[] }) {
+  if (videos.length === 0) return null
+  return (
+    <section className="space-y-1">
+      <p className="text-[10px] font-semibold tracking-wide text-slate-500 uppercase">Vidéos · Julien Song &amp; Marc Quenehen</p>
+      <ul className="space-y-0.5">
+        {videos.map((video) => (
+          <li key={video.id}>
+            <a
+              href={video.url}
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-baseline gap-2 rounded-md px-1.5 py-1 text-xs transition-colors hover:bg-slate-800"
+              title={`${video.channel} · ${formatDuration(video.duration)}`}
+            >
+              <span className="shrink-0 text-[10px] text-rose-400">▶</span>
+              <span className="min-w-0 flex-1 leading-snug text-slate-200">
+                {video.title}
+                {video.specific && <span className="ml-1 rounded bg-emerald-900/50 px-1 text-[9px] text-emerald-200">variante</span>}
+              </span>
+              <span className="shrink-0 text-[10px] text-slate-500">
+                {video.channel.split(' ')[0]} · {formatDuration(video.duration)}
+              </span>
+            </a>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
 
 const SOURCE_LABEL: Record<MoveVerdict['source'], string> = {
   local: 'Stockfish local',
@@ -303,6 +341,8 @@ interface Props {
   fault?: FaultExplanation | null
   /** Score pratique du coup (bilan Lichess face à l'attente du moteur). */
   practical?: PracticalNote | null
+  /** Vidéos de Julien Song et Marc Quenehen sur l'ouverture (version complète). */
+  videos?: CreatorVideo[]
   /** Sources documentaires (Wikibooks, Wikipédia), version complète seulement. */
   docs?: Docs
   /** Requête d'explication du coup par IA, ancrée sur toutes les sources (coups non fautifs). */
@@ -325,6 +365,7 @@ export default function ExplainPanel({
   verdict,
   fault,
   practical,
+  videos,
   docs,
   movePrompt,
   aiPrompt,
@@ -498,6 +539,8 @@ export default function ExplainPanel({
           position.
         </p>
       )}
+
+      {videos && <VideosBlock videos={videos} />}
 
       {docs ? (
         <DocsBlock docs={docs} />

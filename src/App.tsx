@@ -30,7 +30,7 @@ import { explainMove } from './lib/explain'
 import { explainFault } from './lib/refutation'
 import { buildFaultPrompt, buildMovePrompt } from './lib/aiExplain'
 import { chooseReply, STRATEGY_LABEL, STRATEGY_TITLE, type TrainingScore, type TrainingStrategy } from './lib/training'
-import { videoLinkFor } from './data/openingVideos'
+import { videoLinkFor, videosFor } from './data/openingVideos'
 import { buildTree, followSans, nearestNamed, type TreeIndex } from './lib/tree'
 import { buildBranchStatus, loadProgress, markExplored, saveProgress, setStatus } from './lib/progress'
 import { inferColors, loadGames, mapGamesToTree, mergeGames, parsePgn, saveGames } from './lib/games'
@@ -295,6 +295,8 @@ export default function App() {
   const theoryEnded = training !== null && !outOfBook && line.length > 0 && (anchor?.children.length ?? 0) === 0
   /** Video francophone pour l'ouverture courante. */
   const video = useMemo(() => videoLinkFor(named?.family, named?.name), [named])
+  /** Videos de Julien Song et Marc Quenehen sur l'ouverture, pour l'onglet Analyse. */
+  const creatorVideos = useMemo(() => videosFor(named?.family, named?.name), [named])
 
   /** Meilleur coup du moteur pour la position affichee. */
   const bestLine = engineSnapshot?.fen === position.fen ? engineSnapshot.lines[0] : undefined
@@ -947,7 +949,7 @@ export default function App() {
               href={video.url}
               target="_blank"
               rel="noreferrer"
-              title={video.direct ? `Vidéo : ${video.label}` : video.label}
+              title={video.direct ? `Vidéo${video.channel ? ` ${video.channel}` : ''} : ${video.label}` : video.label}
               className="flex items-baseline gap-1.5 text-sm font-semibold text-slate-100 hover:text-blue-300"
             >
               <OpeningName name={named.name ?? ''} className="min-w-0" />
@@ -1102,7 +1104,7 @@ export default function App() {
                 href={video.url}
                 target="_blank"
                 rel="noreferrer"
-                title={video.direct ? `Vidéo : ${video.label}` : video.label}
+                title={video.direct ? `Vidéo${video.channel ? ` ${video.channel}` : ''} : ${video.label}` : video.label}
                 className="flex items-baseline gap-1 text-xs font-semibold text-slate-100"
               >
                 <OpeningName name={named.name ?? ''} className="min-w-0" />
@@ -1212,6 +1214,7 @@ export default function App() {
         verdict={verdict}
         fault={fault}
         practical={practical}
+        videos={creatorVideos}
         docs={docs}
         movePrompt={movePrompt}
         aiPrompt={aiPrompt}
